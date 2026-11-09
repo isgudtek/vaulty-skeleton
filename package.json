@@ -1,0 +1,19 @@
+{
+  "name": "vaulty-skeleton",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vaulty Skeleton monorepo — zero-knowledge client-side vault SDK and showcase apps.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspace @vaulty/core",
+    "test": "npm test --workspace @vaulty/core",
+    "typecheck": "npm run typecheck --workspace @vaulty/core",
+    "check:security": "npm run check:security --workspace @vaulty/core"
+  }
+}

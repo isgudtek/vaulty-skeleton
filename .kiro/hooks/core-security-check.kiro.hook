@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "name": "Core security check",
+  "description": "On every save of packages/core/src/**/*.ts, verify Web Crypto API hygiene and that no forbidden storage calls (localStorage/sessionStorage/cookies) were introduced.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": ["packages/core/src/**/*.ts"]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file in packages/core/src was just saved. Enforce .kiro/steering/crypto-invariants.md:\n\n1. Run `npm run check:security --workspace @vaulty/core` from the repo root and report every violation (file:line [rule]).\n2. Review the saved file by hand for what a regex cannot see:\n   - Web Crypto hygiene: every AES-256-GCM `subtle.encrypt` uses a FRESH 12-byte IV from `crypto.getRandomValues` (via `randomBytes(IV_BYTES)`) — no counters, constants, derived or reused IVs; PBKDF2 is HMAC-SHA-256 with a random 16-byte salt and a default of 600000 iterations; keys are non-extractable; ciphertext is bound with AAD (namespace id / item id / envelope role); no `Math.random`, no `exportKey`.\n   - Forbidden storage: NO `localStorage`/`sessionStorage`/`document.cookie` reads or writes (only `.clear()` inside the duress purge); no plaintext, pattern, phrase or key material persisted; no unencrypted global metadata file revealing vault count or duress configuration.\n   - Memory hygiene: key material and transient secrets are zeroed with `Uint8Array.fill(0)` (SecureBuffer.wipe) on lock / visibilitychange / pagehide / idle; secrets are wiped in `finally` blocks.\n   - No network I/O, `console.*` logging, `eval`, or new runtime dependencies in @vaulty/core.\n3. If anything is violated, fix it (or explain precisely why it cannot be fixed) and re-run the check plus `npm test --workspace @vaulty/core` until both pass. If everything is clean, reply with a one-line confirmation."
+  }
+}
