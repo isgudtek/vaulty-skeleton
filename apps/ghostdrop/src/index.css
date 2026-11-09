@@ -1,0 +1,57 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-obsidian: #090d16;
+  --color-panel: #0e1626;
+  --color-panel-2: #131d31;
+  --color-line: #1e293b;
+  --color-emerald-signal: #10b981;
+  --color-emerald-dim: #065f46;
+  --color-alert: #f43f5e;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-image:
+    radial-gradient(1200px 600px at 50% -10%, rgb(16 185 129 / 0.08), transparent 60%),
+    linear-gradient(rgb(30 41 59 / 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(30 41 59 / 0.35) 1px, transparent 1px);
+  background-size:
+    auto,
+    32px 32px,
+    32px 32px;
+  background-attachment: fixed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-emerald-signal);
+  outline-offset: 2px;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.pulse-dot {
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-dot {
+    animation: none;
+  }
+}

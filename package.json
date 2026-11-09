@@ -1,19 +1,30 @@
 {
   "name": "vaulty-skeleton",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "Vaulty Skeleton monorepo — zero-knowledge client-side vault SDK and showcase apps.",
+  "description": "Vaulty Skeleton monorepo — zero-knowledge client-side vault SDK (@vaulty/core) and two showcase PWAs (GhostDrop, CryptKeep).",
   "license": "MIT",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "build": "npm run build --workspace @vaulty/core",
     "test": "npm test --workspace @vaulty/core",
-    "typecheck": "npm run typecheck --workspace @vaulty/core",
-    "check:security": "npm run check:security --workspace @vaulty/core"
+    "build:core": "npm run build --workspace @vaulty/core",
+    "dev:ghostdrop": "npm run build:core && npm run dev --workspace ghostdrop",
+    "dev:cryptkeep": "npm run build:core && npm run dev --workspace cryptkeep",
+    "build:all": "npm run build:core && npm run build --workspace ghostdrop && npm run build --workspace cryptkeep",
+    "test:all": "npm run build:core && npm test --workspaces --if-present",
+    "typecheck": "npm run build:core && npm run typecheck --workspaces --if-present",
+    "check:security": "npm run check:security --workspace @vaulty/core",
+    "icons": "node scripts/gen-icons.mjs",
+    "e2e": "npm run build:all && node e2e/browser-check.mjs"
+  },
+  "devDependencies": {
+    "puppeteer-core": "25.16.0"
   }
 }
