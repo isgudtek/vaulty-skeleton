@@ -145,9 +145,15 @@ derived from a secret; **namespace** = `hex(PBKDF2-HMAC-SHA256("vaulty-ns:v2:" +
 | R12.1 | THE package SHALL have no runtime `dependencies`. |
 | R12.2 | THE package SHALL ship ESM, CJS and `.d.ts` outputs with exports `"."` and `"./react"`. |
 | R12.3 | THE package SHALL declare `react` as an optional peer dependency and the build SHALL keep `react` external. |
-| R12.4 | THE `./react` entry SHALL provide `useVault(options)` (lock state, auto-lock, progress, CRUD helpers) and an accessible, responsive 5×5 SVG `<PatternGrid />` skinnable via `size`, `nodeColor`, `activeColor`, `lineColor` and `className`. |
+| R12.4 | THE `./react` entry SHALL provide `useVault(options)` (lock state, auto-lock, progress, CRUD helpers), an accessible, responsive 5×5 SVG `<PatternGrid />` skinnable via `size`, `nodeColor`, `activeColor`, `lineColor` and `className`, and the plug-and-play `useVaultDialog()` (R12.7–R12.12). |
 | R12.5 | WHEN the vault locks, `useVault` SHALL clear decrypted metadata from React state. |
 | R12.6 | THE `<PatternGrid />` SHALL be operable by pointer, touch and keyboard, and its live region SHALL announce only the number of selected nodes. |
+| R12.7 | THE `./react` entry SHALL provide `useVaultDialog(options?)` returning `{ saveEncrypted, openEncrypted, lockVault, isUnlocked, namespaceId, VaultModal, vault }`, where `VaultModal` is a component identity that is stable across renders. |
+| R12.8 | WHEN `saveEncrypted(filename, data, mimeType?)` is called while locked, THE dialog SHALL show `<PatternGrid />`; WHEN that unlock creates a new vault, THE dialog SHALL show the 9-word recovery phrase and SHALL NOT encrypt until the user confirms it; THEN it SHALL store the data with `putFile()` and close. WHILE unlocked it SHALL store immediately without showing the modal. |
+| R12.9 | WHEN `openEncrypted(onSelect)` is called, THE dialog SHALL (after unlocking if needed) list entries via `listEntries()` with a two-step delete and an "Export .vault" action; WHEN the user picks an entry it SHALL decrypt it with `getFile()`, call `onSelect({ id, name, mimeType, size, bytes, text })`, and close. |
+| R12.10 | THE dialog SHALL never mutate the caller's `Uint8Array`; it SHALL encrypt its own copy and zero-fill that copy once stored or cancelled. |
+| R12.11 | IF the user cancels, the vault locks while the modal is past the unlock step, the duress pattern is entered, or the host unmounts, THEN the pending promise SHALL settle (`null` / `false`) and nothing SHALL be stored. Escape SHALL cancel on every step except the recovery-phrase step. |
+| R12.12 | THE `<VaultModal />` SHALL use inline styles only (no CSS classes, no stylesheet, no CSS framework), SHALL be a labelled `aria-modal` dialog that moves focus inside, and SHALL be themeable via `options.theme`. |
 
 ## R13 — Tooling guard
 

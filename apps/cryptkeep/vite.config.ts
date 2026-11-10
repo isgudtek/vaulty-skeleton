@@ -33,8 +33,12 @@ function cspPlugin(): Plugin {
 }
 
 export default defineConfig({
-  base: './',
+  // Set VITE_BASE_PATH (e.g. "/vaulty-skeleton/cryptkeep/") when hosting under a sub-path such as GitHub Pages.
+  base: process.env.VITE_BASE_PATH || '/',
   plugins: [react(), tailwindcss(), cspPlugin()],
+  // Fixed ports so the two apps never collide with each other or with other local dev servers.
+  server: { port: 5182, strictPort: true },
+  preview: { port: 4182, strictPort: true },
   build: { target: 'es2022', sourcemap: false },
   test: {
     environment: 'jsdom',

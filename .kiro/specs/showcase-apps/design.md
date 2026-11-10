@@ -1,6 +1,6 @@
 # Design — Showcase apps (`GhostDrop` + `CryptKeep`)
 
-Traceability: `S*`, `G*`, `C*` refer to `requirements.md`; `core §*` / `core R*` refer to `.kiro/specs/vaulty-core/`.
+Traceability: `S*`, `G*`, `C*`, `I*`, `P*` refer to `requirements.md`; `core §*` / `core R*` refer to `.kiro/specs/vaulty-core/`.
 
 ## 1. Thesis
 
@@ -131,3 +131,43 @@ App
 | Architecture | `tests/architecture.test.ts` | no crypto/storage in the apps; import allow-list; dependency list; SDK usage |
 | UI integration | `tests/app.test.tsx` (jsdom) | real `VaultClient` with `MemoryStorageAdapter`, real pointer events on the SDK grid: unlock, isolation, uploads, ciphertext-only at rest, preview/revoke/lock, duress, archives, recovery, seeds, TOTP, clipboard |
 | Real browser | `e2e/browser-check.mjs` (`npm run e2e`) | Chrome + puppeteer-core against the built bundles: 600 000-iteration PBKDF2, real OPFS dump scanned for plaintext, service worker + CSP, fake microphone, real clipboard auto-clear, keyboard-only unlock, duress wipe of OPFS/IndexedDB/Cache API/localStorage, recovery on a fresh profile |
+
+## 8. InkVault — drop-in adoption (I*)
+
+InkVault inverts the other two apps: the **unlocked, plaintext editor is the default state** and the vault is a storage target
+the user opts into, like "Save As…". Nothing about normal editing changes.
+
+| Concern | Design |
+|---|---|
+| Normal mode | `App` starts with an in-memory `Doc { name, text, savedName, savedText, entryId }`. No adapter is touched until a vault action; nothing is persisted. `beforeunload` warns while dirty. |
+| Save As Encrypted | Locked → `UnlockModal` (`<PatternGrid />`) → `useVault().unlock()` → banner with the one-time phrase if `created` → `putFile(utf8(text), { name, mimeType: 'text/markdown', tags: ['note'], id: entryId })` → bytes `.fill(0)`. Unlocked → `putFile` directly. Passing the previous `entryId` updates the note in place. |
+| Open from Vault | Locked → `UnlockModal` → `VaultBrowser` listing `client.listEntries({ mimeType: 'text/markdown' })` → `getFile(id)` → UTF-8 decode → `data.fill(0)` → editor. Unsaved text is guarded by a confirm dialog. |
+| Lock | A `useLayoutEffect` keyed on `isUnlocked` transitions clears the doc, dialogs and phrase. The preview is fed by `useDeferredValue` for smooth typing, but an **empty buffer bypasses the deferral** — otherwise the decrypted note lingered in the preview for a few frames after locking (found by the real-browser E2E, not by jsdom). |
+| Markdown | `lib/markdown.ts`: a ~300-line dependency-free parser producing a typed tree; `components/Preview.tsx` renders it with `createElement` — never `innerHTML`. Links: http(s)/mailto/anchors only, `rel="noopener noreferrer nofollow"`; images replaced by `[image: alt]`. CSP: `img-src 'self' data:`, `frame-src 'none'`, `object-src 'none'`. |
+| Storage | `createBestStorageAdapter({ rootName: 'inkvault', dbName: 'inkvault-vault' })` (S1.7). |
+| Tests | 74: Markdown blocks/inline/XSS/robustness (29), helpers (6), architecture guard incl. raw-HTML ban (13), lifecycle (26). Mutation-checked: removing the editor clear, the phrase clear, or adding a `localStorage` write each fails the suite. |
+
+Relationship to `useVaultDialog()` (core R12.7): InkVault deliberately uses the lower-level `useVault()` + `<PatternGrid />` so its
+banner, toolbar and confirmations match the app's own design. `useVaultDialog()` packages the same flow as a 6-line, self-styled
+drop-in for apps that do not want to build any UI.
+
+## 9. GitHub Pages deployment (P*)
+
+```
+push to main / workflow_dispatch
+  └─ build job: npm ci → build @vaulty/core
+       → VITE_BASE_PATH=/vaulty-skeleton/<app>/ npm run build --workspace=<app>   (×3)
+       → _site/{ghostdrop,cryptkeep,inkvault}/ + site/index.html + .nojekyll
+       → assert each app's index.html references /vaulty-skeleton/<app>/assets/
+       → configure-pages@v5 → upload-pages-artifact@v3
+  └─ deploy job (environment github-pages): deploy-pages@v4
+```
+
+* The landing page is a checked-in static file (`site/index.html`) rather than HTML generated inside YAML, so it is reviewable and
+  testable locally. It has its own CSP (`default-src 'none'`) and links to the apps relatively (`./ghostdrop/`).
+* `base` must be absolute for Pages sub-paths; `manifest.webmanifest` (`start_url`/`scope: "./"`), icon links and service-worker
+  registration (`./sw.js`) are relative, so each app's SW is scoped to its own folder.
+* **Shared origin.** All three apps live on `isgudtek.github.io`. Per-app storage roots (S1.7) keep vaults separate, but GhostDrop's
+  duress purge (`purgeEnvironment`) clears the whole origin by design — the landing page and README say so (P2.2).
+* Verified locally by running the workflow's own `run:` steps, serving `_site` under `/vaulty-skeleton/`, and checking in Chrome:
+  card links, asset paths, service-worker scopes, no 404s, and that the same pattern in GhostDrop and InkVault opens separate vaults.

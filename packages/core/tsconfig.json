@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "noEmit": true,
+    "jsx": "react-jsx",
     "types": ["node"]
   },
   "include": ["src", "tests", "tsup.config.ts", "vitest.config.ts"]

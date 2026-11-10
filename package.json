@@ -2,7 +2,7 @@
   "name": "vaulty-skeleton",
   "version": "0.2.0",
   "private": true,
-  "description": "Vaulty Skeleton monorepo — zero-knowledge client-side vault SDK (@vaulty/core) and two showcase PWAs (GhostDrop, CryptKeep).",
+  "description": "Vaulty Skeleton monorepo — zero-knowledge client-side vault SDK (@vaulty/core) and three showcase apps (GhostDrop, CryptKeep, InkVault).",
   "license": "MIT",
   "workspaces": [
     "packages/*",
@@ -17,7 +17,8 @@
     "build:core": "npm run build --workspace @vaulty/core",
     "dev:ghostdrop": "npm run build:core && npm run dev --workspace ghostdrop",
     "dev:cryptkeep": "npm run build:core && npm run dev --workspace cryptkeep",
-    "build:all": "npm run build:core && npm run build --workspace ghostdrop && npm run build --workspace cryptkeep",
+    "dev:inkvault": "npm run build:core && npm run dev --workspace inkvault",
+    "build:all": "npm run build:core && npm run build --workspace ghostdrop && npm run build --workspace cryptkeep && npm run build --workspace inkvault",
     "test:all": "npm run build:core && npm test --workspaces --if-present",
     "typecheck": "npm run build:core && npm run typecheck --workspaces --if-present",
     "check:security": "npm run check:security --workspace @vaulty/core",

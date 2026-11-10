@@ -1,8 +1,9 @@
-# Tasks — Showcase apps (`GhostDrop` + `CryptKeep`)
+# Tasks — Showcase apps (`GhostDrop` + `CryptKeep` + `InkVault`)
 
 Legend: `[x]` = implemented **and** verified. Verification gate (all green at completion, from the repo root):
-`npm install` · `npm run typecheck` · `npm run test:all` (205 core + 38 GhostDrop + 90 CryptKeep = 333 tests) ·
-`npm run build:all` · `npm run check:security` · `npm run e2e` (20 real-Chrome checks).
+`npm install` · `npm run typecheck` · `npm run check:security` · `npm run test:all`
+(220 core + 40 GhostDrop + 92 CryptKeep + 74 InkVault = 426 tests) · `npm run build:all` · `npm run e2e` (29 real-Chrome checks).
+Phase 2 originally closed at 333 tests / 20 browser checks; the numbers above are the current state.
 Requirement IDs refer to `requirements.md`.
 
 ## 0. Workspace & agentic setup
@@ -50,3 +51,22 @@ Requirement IDs refer to `requirements.md`.
 - Clipboard overwrite cannot detect whether the clipboard still holds the secret; OS clipboard history may retain it
 - Phrase recovery needs the `.vault` file; the phrase alone cannot find a vault whose pattern is forgotten
 - Real-browser coverage is Chrome only; Safari/Firefox (OPFS write paths, MediaRecorder codecs) are untested
+
+## 5. InkVault (`apps/inkvault`) — drop-in "Save As Encrypted" Markdown scratchpad
+- [x] 5.1 Vite + React + Tailwind scaffold matching GhostDrop/CryptKeep conventions (strict TS, architecture test, PWA, CSP); `base: process.env.VITE_BASE_PATH || '/'` (I5.1); root `dev:inkvault` script
+- [x] 5.2 Editorial paper/slate/indigo skin (`#FAF9F6` / `#1E293B` / `#4F46E5`) and icon (S3.4)
+- [x] 5.3 Normal mode first: split-pane editor + live preview, no lock screen; unload warning while dirty (I1.1–I1.3)
+- [x] 5.4 Dependency-free, XSS-safe Markdown parser rendered to React elements (I1.4)
+- [x] 5.5 Save to Encrypted Vault: pattern modal → one-time phrase banner → `putFile`; in-place updates; Ctrl/⌘+S (I2)
+- [x] 5.6 Open from Vault: pattern → `listEntries()` browser → `getFile()` into the editor; delete; unsaved-change guard (I3)
+- [x] 5.7 Lock Vault / tab hide / idle clears editor, preview, phrase in the same frame (I4) — real-browser bug fixed (deferred preview)
+- [x] 5.8 Tests: 74 (architecture 13 · helpers 6 · Markdown 29 · lifecycle 26) + mutation checks; 9 real-Chrome checks incl. sub-path build
+- Note: no ESLint config exists in GhostDrop/CryptKeep, so none was added; "conventions" = strict TS + architecture test + Vite/Tailwind layout
+
+## 6. Shared-origin hardening & GitHub Pages
+- [x] 6.1 Per-app storage roots `ghostdrop` / `cryptkeep` / `inkvault` (S1.7), guarded by architecture tests
+- [x] 6.2 `base: process.env.VITE_BASE_PATH || '/'` in all three Vite configs, guarded by architecture tests (P1.1)
+- [x] 6.3 `site/index.html` switch landing page: three launch cards, repo link, shared-origin/duress caveat, strict CSP (P2)
+- [x] 6.4 `.github/workflows/deploy-pages.yml` (P1.2–P1.4) — its `run:` steps executed verbatim locally; `_site` served under `/vaulty-skeleton/` and checked in Chrome
+- [x] 6.5 README: live demo links, three-app table and Mermaid diagram, `useVaultDialog()` 6-line quickstart first in Developer integration
+- [ ] 6.6 Live deployment verified on `https://isgudtek.github.io/vaulty-skeleton/` (completed after push — see commit history)

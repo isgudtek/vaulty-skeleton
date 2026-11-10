@@ -13,8 +13,8 @@ export default defineConfig({
   treeshake: true,
   target: 'es2022',
   platform: 'neutral',
-  // react is an OPTIONAL peer dependency; it must never be bundled.
-  external: ['react'],
+  // react is an OPTIONAL peer dependency; it (and its JSX runtime) must never be bundled.
+  external: ['react', 'react/jsx-runtime'],
   outExtension({ format }) {
     return { js: format === 'cjs' ? '.cjs' : '.js' };
   },

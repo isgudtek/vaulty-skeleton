@@ -53,6 +53,16 @@ describe('GhostDrop architecture: no crypto or storage logic outside @vaulty/cor
     expect(bad).toEqual([]);
   });
 
+  it('keeps the Vite base configurable for sub-path hosting (GitHub Pages)', () => {
+    const cfg = readFileSync(resolve(HERE, '../vite.config.ts'), 'utf8');
+    expect(cfg).toContain("base: process.env.VITE_BASE_PATH || '/'");
+  });
+
+  it('uses an app-specific storage root so apps sharing one origin keep separate vaults', () => {
+    const adapter = files.find((f) => f.path.endsWith('adapter.ts'))!.code;
+    expect(adapter).toContain("rootName: 'ghostdrop'");
+  });
+
   it('declares only @vaulty/core, react and react-dom as runtime dependencies', () => {
     expect(Object.keys(PKG.dependencies).sort()).toEqual(['@vaulty/core', 'react', 'react-dom']);
   });

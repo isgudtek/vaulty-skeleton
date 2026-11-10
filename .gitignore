@@ -5,6 +5,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 coverage/
+_site/
 
 # logs & env
 *.log

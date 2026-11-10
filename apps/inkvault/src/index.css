@@ -1,0 +1,121 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-paper: #faf9f6;
+  --color-paper-2: #f3f1ea;
+  --color-ink: #1e293b;
+  --color-ink-soft: #475569;
+  --color-rule: #e2dfd5;
+  --color-indigo-ink: #4f46e5;
+  --color-indigo-deep: #3730a3;
+  --color-alert: #b91c1c;
+  --font-serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-indigo-ink);
+  outline-offset: 2px;
+}
+
+/* Rendered Markdown (the preview pane). Plain CSS: no typography plugin, no runtime dependency. */
+.md {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  line-height: 1.75;
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+.md > * + * {
+  margin-top: 1rem;
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4,
+.md h5,
+.md h6 {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin-top: 1.6rem;
+}
+.md h1 {
+  font-size: 1.9rem;
+  border-bottom: 1px solid var(--color-rule);
+  padding-bottom: 0.3rem;
+}
+.md h2 {
+  font-size: 1.5rem;
+}
+.md h3 {
+  font-size: 1.25rem;
+}
+.md h4,
+.md h5,
+.md h6 {
+  font-size: 1.05rem;
+}
+.md a {
+  color: var(--color-indigo-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.md blockquote {
+  border-left: 3px solid var(--color-indigo-ink);
+  padding-left: 1rem;
+  color: var(--color-ink-soft);
+  font-style: italic;
+}
+.md code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  background: var(--color-paper-2);
+  border: 1px solid var(--color-rule);
+  border-radius: 4px;
+  padding: 0.05em 0.35em;
+}
+.md pre {
+  background: var(--color-ink);
+  color: #e2e8f0;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+}
+.md pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font-size: 0.85rem;
+}
+.md ul,
+.md ol {
+  padding-left: 1.5rem;
+}
+.md ul {
+  list-style: disc;
+}
+.md ol {
+  list-style: decimal;
+}
+.md li.task {
+  list-style: none;
+  margin-left: -1.25rem;
+}
+.md hr {
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+}

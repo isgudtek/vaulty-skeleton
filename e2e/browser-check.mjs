@@ -1,5 +1,5 @@
 /**
- * Real-browser end-to-end verification of the Vaulty showcase apps (GhostDrop + CryptKeep).
+ * Real-browser end-to-end verification of the Vaulty showcase apps (GhostDrop + CryptKeep + InkVault).
  *
  *   npm run e2e                      # builds everything, then drives real Chrome
  *   CHROME_PATH=/path/to/chrome npm run e2e
@@ -10,6 +10,7 @@
  * clipboard and a real 15-second auto-clear wait. Requires Chrome/Chromium and `puppeteer-core`.
  */
 import { createHmac } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -26,7 +27,7 @@ const CHROME =
   process.env.CHROME_PATH ??
   ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].find(existsSync);
 if (!CHROME) throw new Error('Chrome/Chromium not found. Set CHROME_PATH.');
-for (const app of ['ghostdrop', 'cryptkeep']) {
+for (const app of ['ghostdrop', 'cryptkeep', 'inkvault']) {
   if (!existsSync(join(REPO, 'apps', app, 'dist', 'index.html'))) throw new Error(`apps/${app}/dist missing — run \`npm run build:all\` first`);
 }
 rmSync(SHOTS, { recursive: true, force: true });
@@ -35,11 +36,12 @@ mkdirSync(SHOTS, { recursive: true });
 mkdirSync(DOWNLOADS, { recursive: true });
 
 const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
-function serve(dir) {
+function serve(dir, prefix = '') {
   return new Promise((resolve) => {
     const srv = createServer((req, res) => {
       const url = new URL(req.url, 'http://x');
-      let p = normalize(join(dir, decodeURIComponent(url.pathname)));
+      if (!url.pathname.startsWith(prefix)) { res.writeHead(404).end('outside base path'); return; }
+      let p = normalize(join(dir, decodeURIComponent(url.pathname.slice(prefix.length))));
       if (!p.startsWith(dir)) { res.writeHead(403).end(); return; }
       if (existsSync(p) && statSync(p).isDirectory()) p = join(p, 'index.html');
       if (!existsSync(p)) { res.writeHead(404).end('not found'); return; }
@@ -184,7 +186,7 @@ console.log('GhostDrop (real Chrome, real OPFS, 600,000-iteration PBKDF2)');
     const dump = await opfsDump(page, MARKER);
     assert(!dump.leak, 'PLAINTEXT FOUND IN OPFS');
     const names = dump.files.map((f) => f.path);
-    assert(names.some((n) => /^vaulty\/[0-9a-f]{64}\/keys\.bin$/.test(n)), 'no keys.bin: ' + names);
+    assert(names.some((n) => /^ghostdrop\/[0-9a-f]{64}\/keys\.bin$/.test(n)), 'no keys.bin: ' + names);
     assert(names.some((n) => /\/index\.enc$/.test(n)), 'no index.enc');
     assert(names.filter((n) => /[0-9a-f-]{36}$/.test(n)).length === 2, 'expected 2 UUID blobs: ' + names);
     assert(!(await page.evaluate(() => localStorage.length + sessionStorage.length)), 'web storage used');
@@ -465,6 +467,168 @@ let recoveryPhrase;
     await page.waitForSelector('[data-testid="ns-fingerprint"]', { hidden: true, timeout: 5000 });
   });
   await ctx.close();
+}
+
+
+/* ============================== INKVAULT ============================== */
+console.log('\nInkVault (real Chrome: normal mode → Save As Encrypted → lock → Open from Vault)');
+{
+  const ink = await serve(join(REPO, 'apps/inkvault/dist'));
+  const ctx = await browser.createBrowserContext();
+  const page = await ctx.newPage();
+  watch(page, 'inkvault');
+  const cdp = await page.createCDPSession();
+  await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: DOWNLOADS, browserContextId: ctx.id });
+  await page.setViewport({ width: 1280, height: 860 });
+  await page.goto(ink.origin, { waitUntil: 'networkidle0' });
+
+  const MARK = 'INK-SECRET-DRAFT-7731';
+  const NOTE = `# Field plan\n\nMeet at **dawn**. ${MARK}\n\n- bring map\n- [x] charge phone`;
+  const setEditor = (v) =>
+    page.$eval('[data-testid="editor"]', (el, val) => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(el, val);
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }, v);
+  const editorValue = () => page.$eval('[data-testid="editor"]', (el) => el.value);
+
+  await step('opens straight into the editor: no lock screen, no pattern grid; CSP, manifest, service worker present', async () => {
+    await page.waitForSelector('[data-testid="editor"]');
+    assert(!(await page.$('svg[role="application"]')), 'a pattern grid is visible in normal mode');
+    assert(!(await page.$('[role="dialog"]')), 'a dialog blocks normal mode');
+    const buttons = await page.$$eval('nav button', (bs) => bs.map((b) => b.textContent.trim()));
+    assert(JSON.stringify(buttons) === JSON.stringify(['New Note', 'Download .md (Plaintext)', 'Save to Encrypted Vault', 'Open from Vault']), 'toolbar: ' + buttons);
+    const csp = await page.$eval('meta[http-equiv="Content-Security-Policy"]', (m) => m.content);
+    assert(/default-src 'self'/.test(csp) && !/unsafe-eval/.test(csp) && /img-src 'self' data:/.test(csp), 'CSP: ' + csp);
+    const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    await page.waitForFunction(async () => (await caches.keys()).includes('inkvault-shell-v1'), { timeout: 10000 });
+    await shot(page, 'inkvault-1-empty');
+    return `paper background ${bg}`;
+  });
+
+  await step('live Markdown preview; raw HTML, javascript: links and remote images are inert', async () => {
+    await setEditor(`${NOTE}\n\n<img src=x onerror="window.__pwned=1">\n\n[bad](javascript:window.__pwned=2)\n\n![px](https://evil.example/p.png)`);
+    await page.waitForFunction(() => document.querySelector('[data-testid="preview"] h1')?.textContent === 'Field plan', { timeout: 5000 });
+    const r = await page.evaluate(() => ({
+      imgs: document.querySelectorAll('[data-testid="preview"] img').length,
+      links: document.querySelectorAll('[data-testid="preview"] a').length,
+      pwned: window.__pwned,
+      strong: document.querySelector('[data-testid="preview"] strong')?.textContent,
+    }));
+    assert(r.imgs === 0 && r.links === 0 && r.pwned === undefined, 'unsafe content became active: ' + JSON.stringify(r));
+    assert(r.strong === 'dawn', 'bold not rendered');
+    await setEditor(NOTE);
+    await shot(page, 'inkvault-2-editing');
+  });
+
+  await step('Download .md writes the plaintext exactly as written (explicit, user-initiated)', async () => {
+    const before = new Set(readdirSync(DOWNLOADS));
+    await clickButton(page, 'Download .md (Plaintext)');
+    await sleep(800);
+    const f = readdirSync(DOWNLOADS).find((n) => !before.has(n) && n.endsWith('.md'));
+    assert(f === 'Field plan.md', 'downloaded: ' + f);
+    assert(readFileSync(join(DOWNLOADS, f), 'utf8') === NOTE, 'downloaded content differs');
+  });
+
+  await step('Save to Encrypted Vault → pattern modal → 6+ nodes → one-time phrase banner; only ciphertext reaches OPFS', async () => {
+    await clickButton(page, 'Save to Encrypted Vault');
+    await page.waitForSelector('[role="dialog"] svg[role="application"]');
+    await shot(page, 'inkvault-3-unlock-modal');
+    const t0 = Date.now();
+    await drawPattern(page, PATTERN_A, '[role="dialog"]');
+    await page.waitForSelector('[data-testid="recovery-banner"]', { timeout: 15000 });
+    const ms = Date.now() - t0;
+    const words = await page.$$eval('[data-testid="recovery-words"] li', (l) => l.length);
+    assert(words === 9, 'phrase words ' + words);
+    await waitText(page, /Saved .Field plan\.md./);
+    assert(!(await page.$('[role="dialog"]')), 'modal still open after save');
+    await page.waitForSelector('button[aria-label="Lock the vault and clear the editor"]');
+    const dump = await opfsDump(page, MARK);
+    assert(!dump.leak, 'PLAINTEXT FOUND IN OPFS');
+    assert(dump.files.length === 3, 'expected keys.bin + index.enc + 1 note, got ' + dump.files.map((f) => f.path));
+    assert(!(await page.evaluate(() => localStorage.length + sessionStorage.length)), 'web storage used');
+    await shot(page, 'inkvault-4-saved');
+    return `unlock+save ≈ ${ms}ms, 3 OPFS files, 0 plaintext matches`;
+  });
+
+  await step('Ctrl+S re-saves the same note without asking for the pattern again', async () => {
+    await setEditor(NOTE + '\n\nSecond paragraph.');
+    await page.keyboard.down('Control');
+    await page.keyboard.press('KeyS');
+    await page.keyboard.up('Control');
+    await page.waitForFunction(() => /✓ saved in vault/.test(document.body.innerText), { timeout: 8000 });
+    assert(!(await page.$('[role="dialog"]')), 'unexpected prompt');
+    assert((await opfsDump(page)).files.length === 3, 'a duplicate note was created');
+  });
+
+  await step('Lock Vault wipes keys and clears the editor, preview and recovery phrase', async () => {
+    // Click and inspect in the SAME page task (no awaits in between): the preview must already be empty —
+    // decrypted text may not linger even for one frame after the vault reports "locked".
+    const instant = await page.evaluate(() => {
+      document.querySelector('button[aria-label="Lock the vault and clear the editor"]').click();
+      return new Promise((res) => requestAnimationFrame(() => res(document.querySelector('[data-testid="preview"]').innerText)));
+    });
+    assert(!instant.includes('Field plan'), 'decrypted note still in the preview on the first frame after lock');
+    await page.waitForSelector('button[aria-label="Lock the vault and clear the editor"]', { hidden: true });
+    assert((await editorValue()) === '', 'editor not cleared');
+    const text = await page.evaluate(() => document.body.innerText);
+    assert(!text.includes(MARK) && !text.includes('Field plan'), 'plaintext still on screen');
+    assert(!(await page.$('[data-testid="recovery-banner"]')), 'recovery phrase still shown');
+    assert(/Vault locked/i.test(text), 'no lock notice');
+    assert((await opfsDump(page)).files.length === 3, 'vault data vanished');
+    await shot(page, 'inkvault-5-locked');
+  });
+
+  await step('Open from Vault → pattern → encrypted notes list → decrypts the note back into the editor', async () => {
+    await clickButton(page, 'Open from Vault');
+    await page.waitForSelector('[role="dialog"] svg[role="application"]');
+    await drawPattern(page, PATTERN_A, '[role="dialog"]');
+    await page.waitForSelector('[data-testid="vault-notes"]', { timeout: 15000 });
+    assert(!(await page.$('[data-testid="recovery-banner"]')), 'phrase shown again for an existing vault');
+    await shot(page, 'inkvault-6-vault-list');
+    await clickByLabel(page, 'Open Field plan.md');
+    await page.waitForFunction((m) => document.querySelector('[data-testid="editor"]').value.includes(m), { timeout: 8000 }, MARK);
+    assert((await editorValue()).includes('Second paragraph.'), 'latest saved edit not restored');
+    await page.waitForFunction(() => document.querySelector('[data-testid="preview"] h1')?.textContent === 'Field plan');
+  });
+
+  await step('hidden tab locks the vault and clears the editor immediately', async () => {
+    await page.evaluate(() => {
+      Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await page.waitForSelector('button[aria-label="Lock the vault and clear the editor"]', { hidden: true, timeout: 5000 });
+    assert((await editorValue()) === '', 'editor not cleared on hide');
+    assert(!(await page.evaluate(() => document.body.innerText)).includes(MARK), 'plaintext visible after hide');
+  });
+  await ctx.close();
+  ink.srv.close();
+
+  // Sub-path hosting (e.g. GitHub Pages): VITE_BASE_PATH rewrites every asset URL.
+  const SUB = '/vaulty-skeleton/inkvault/';
+  const subDir = join(WORK, 'inkvault-subpath');
+  rmSync(subDir, { recursive: true, force: true });
+  execFileSync('npx', ['vite', 'build', '--outDir', subDir, '--emptyOutDir'], {
+    cwd: join(REPO, 'apps/inkvault'),
+    env: { ...process.env, VITE_BASE_PATH: SUB },
+    stdio: 'ignore',
+  });
+  const sub = await serve(subDir, SUB.slice(0, -1));
+  const ctx2 = await browser.createBrowserContext();
+  const page2 = await ctx2.newPage();
+  const failed = [];
+  page2.on('response', (r) => r.status() >= 400 && failed.push(`${r.status()} ${r.url()}`));
+  await step(`VITE_BASE_PATH=${SUB}: app loads and works from a sub-path with no 404s`, async () => {
+    await page2.goto(sub.origin + SUB, { waitUntil: 'networkidle0' });
+    await page2.waitForSelector('[data-testid="editor"]');
+    const srcs = await page2.$$eval('script[src], link[rel="stylesheet"]', (els) => els.map((e) => e.getAttribute('src') ?? e.getAttribute('href')));
+    assert(srcs.length >= 2 && srcs.every((u) => u.startsWith(SUB)), 'assets not under base: ' + srcs);
+    assert(failed.length === 0, 'failed requests: ' + failed.join(', '));
+    const bg = await page2.evaluate(() => getComputedStyle(document.body).backgroundColor);
+    assert(bg === 'rgb(250, 249, 246)', 'stylesheet not applied from sub-path: ' + bg);
+  });
+  await ctx2.close();
+  sub.srv.close();
+  rmSync(subDir, { recursive: true, force: true });
 }
 
 await browser.close();

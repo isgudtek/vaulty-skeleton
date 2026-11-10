@@ -5,7 +5,7 @@
   "version": "1",
   "when": {
     "type": "fileEdited",
-    "patterns": ["packages/core/src/**/*.ts"]
+    "patterns": ["packages/core/src/**/*.ts", "packages/core/src/**/*.tsx"]
   },
   "then": {
     "type": "askAgent",

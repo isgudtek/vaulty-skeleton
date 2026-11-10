@@ -13,5 +13,7 @@ These rules apply to everything under `apps/`. They complement `crypto-invariant
 6. **Never leak vault existence.** The lock screen must not show "wrong pattern" wording, and after a duress wipe it must show no
    wording about duress or destruction.
 7. **Keep the guard tests green.** `tests/architecture.test.ts` in each app encodes rules 1–4; do not weaken it to make a change pass.
-8. Before declaring work done: `npm run typecheck`, `npm run test:all`, `npm run build:all` from the repo root; run `npm run e2e` when UI,
-   storage, or lock behaviour changed.
+8. **One storage root per app.** Call `createBestStorageAdapter({ rootName: '<app>', dbName: '<app>-vault' })`; apps may share an
+   origin (GitHub Pages), and the default `vaulty` root would make them read each other's vaults. Keep `base: process.env.VITE_BASE_PATH || '/'`.
+9. Before declaring work done: `npm run typecheck`, `npm run check:security`, `npm run test:all`, `npm run build:all` from the repo root;
+   run `npm run e2e` when UI, storage, or lock behaviour changed — jsdom cannot see frame-level leaks (see InkVault's deferred preview).

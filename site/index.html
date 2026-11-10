@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; base-uri 'none'; form-action 'none'" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Live demos of @vaulty/core — a zero-dependency, zero-knowledge vault SDK — powering three very different browser apps." />
+    <title>Vaulty Skeleton — Live Zero-Knowledge Showcase</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="./inkvault/icons/icon-192.png" />
+    <style>
+      :root {
+        --bg: #0b0f19;
+        --panel: #111827;
+        --line: #1f2937;
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --accent: #a5b4fc;
+        --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+        --sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        min-height: 100vh;
+        background:
+          radial-gradient(900px 500px at 15% -10%, rgb(16 185 129 / 0.14), transparent 60%),
+          radial-gradient(900px 500px at 85% -10%, rgb(99 102 241 / 0.16), transparent 60%),
+          radial-gradient(700px 400px at 50% 110%, rgb(245 158 11 / 0.10), transparent 60%),
+          var(--bg);
+        color: var(--text);
+        font: 16px/1.6 var(--sans);
+      }
+      a { color: inherit; }
+      .wrap { max-width: 1120px; margin: 0 auto; padding: 56px 20px 40px; }
+      .eyebrow { font: 600 12px/1 var(--mono); letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
+      h1 { font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.08; letter-spacing: -0.02em; margin: 14px 0 16px; }
+      h1 span { background: linear-gradient(90deg, #34d399, #a5b4fc 55%, #fbbf24); -webkit-background-clip: text; background-clip: text; color: transparent; }
+      .lede { max-width: 760px; color: #cbd5e1; font-size: 1.1rem; margin: 0; }
+      .lede code, .facts code { font-family: var(--mono); font-size: 0.92em; color: var(--accent); }
+      .facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 24px 0 40px; padding: 0; list-style: none; }
+      .facts li { font: 500 12.5px/1 var(--mono); padding: 8px 10px; border: 1px solid var(--line); border-radius: 999px; background: rgb(17 24 39 / 0.7); color: #d1d5db; }
+      .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+      .card {
+        position: relative; display: flex; flex-direction: column; gap: 14px; padding: 22px;
+        border-radius: 18px; border: 1px solid var(--line); text-decoration: none;
+        transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+      }
+      .card:hover, .card:focus-visible { transform: translateY(-3px); }
+      .card:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+      .card img { width: 52px; height: 52px; border-radius: 12px; }
+      .card h2 { margin: 0; font-size: 1.45rem; letter-spacing: -0.01em; }
+      .card .tag { font: 600 11px/1.3 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+      .card p { margin: 0; font-size: 0.97rem; }
+      .card ul { margin: 0; padding-left: 18px; font-size: 0.92rem; }
+      .card .go { margin-top: auto; font: 700 14px/1 var(--sans); display: inline-flex; gap: 8px; align-items: center; }
+      .ghost { background: #090d16; color: #cbd5e1; border-color: #134e4a; }
+      .ghost:hover, .ghost:focus-visible { border-color: #10b981; box-shadow: 0 0 40px rgb(16 185 129 / 0.18); }
+      .ghost h2, .ghost .tag, .ghost .go { color: #34d399; font-family: var(--mono); }
+      .crypt { background: #f8fafc; color: #27272a; border-color: #18181b; box-shadow: 6px 6px 0 #18181b; }
+      .crypt:hover, .crypt:focus-visible { box-shadow: 9px 9px 0 #f59e0b; }
+      .crypt h2 { color: #18181b; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+      .crypt .tag, .crypt .go { color: #b45309; }
+      .ink { background: #faf9f6; color: #1e293b; border-color: #e2dfd5; }
+      .ink:hover, .ink:focus-visible { border-color: #4f46e5; box-shadow: 0 18px 50px rgb(79 70 229 / 0.22); }
+      .ink h2 { font-family: 'Iowan Old Style', Palatino, Georgia, serif; color: #1e293b; }
+      .ink h2 b { color: #4f46e5; }
+      .ink .tag, .ink .go { color: #4f46e5; }
+      .code {
+        margin: 44px 0 0; padding: 18px 20px; border-radius: 14px; border: 1px solid var(--line);
+        background: rgb(17 24 39 / 0.85); overflow-x: auto; font: 13.5px/1.7 var(--mono); color: #e5e7eb;
+      }
+      .code .c { color: #6b7280; }
+      .code .k { color: #c4b5fd; }
+      .code .s { color: #86efac; }
+      .note { margin: 28px 0 0; padding: 14px 16px; border-left: 3px solid #f59e0b; background: rgb(245 158 11 / 0.07); border-radius: 0 10px 10px 0; color: #d1d5db; font-size: 0.92rem; }
+      footer { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 14px 24px; color: var(--muted); font-size: 0.9rem; }
+      footer a { color: var(--accent); }
+      @media (prefers-reduced-motion: reduce) { .card { transition: none; } .card:hover { transform: none; } }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+      <p class="eyebrow">Kiroween · Skeleton Crew</p>
+      <h1>One zero-knowledge skeleton.<br /><span>Three completely different apps.</span></h1>
+      <p class="lede">
+        <code>@vaulty/core</code> is a zero-dependency vault SDK that runs entirely in your browser: draw a 5×5 pattern, get an
+        AES-256-GCM encrypted vault with plausible deniability, a duress wipe and portable <code>.vault</code> backups.
+        Nothing is ever sent to a server — these demos are static files.
+      </p>
+      <ul class="facts" aria-label="Security highlights">
+        <li>PBKDF2-SHA256 × 600,000</li>
+        <li>random 256-bit master key</li>
+        <li>AES-256-GCM + AAD</li>
+        <li>9-word recovery phrase</li>
+        <li>no “wrong pattern”</li>
+        <li>OPFS → IndexedDB</li>
+        <li>0 runtime dependencies</li>
+      </ul>
+
+      <div class="grid">
+        <a class="card ghost" href="./ghostdrop/">
+          <img src="./ghostdrop/icons/icon-192.png" alt="" width="52" height="52" />
+          <span class="tag">Binary &amp; media</span>
+          <h2>GhostDrop</h2>
+          <p>Binary &amp; Media Whistleblower Vault — encrypt photos, PDFs and in-browser voice notes on the device.</p>
+          <ul>
+            <li>Zero-leak in-memory previewer</li>
+            <li>Decoy vaults &amp; duress panic wipe</li>
+            <li>Portable <code>.vault</code> archives</li>
+          </ul>
+          <span class="go">Launch GhostDrop →</span>
+        </a>
+
+        <a class="card crypt" href="./cryptkeep/">
+          <img src="./cryptkeep/icons/icon-192.png" alt="" width="52" height="52" />
+          <span class="tag">Structured records</span>
+          <h2>CryptKeep</h2>
+          <p>Air-Gapped Seed Phrase &amp; TOTP 2FA Vault — typed JSON records with an RFC 6238 authenticator.</p>
+          <ul>
+            <li>Masked seed words, reveal one at a time</li>
+            <li>15-second clipboard auto-clear</li>
+            <li>Recover with the 9-word phrase</li>
+          </ul>
+          <span class="go">Launch CryptKeep →</span>
+        </a>
+
+        <a class="card ink" href="./inkvault/">
+          <img src="./inkvault/icons/icon-192.png" alt="" width="52" height="52" />
+          <span class="tag">Drop-in adoption</span>
+          <h2>Ink<b>Vault</b></h2>
+          <p>Drop-In “Save As Encrypted” Markdown Editor — write normally; encrypt only when you choose to.</p>
+          <ul>
+            <li>No lock screen until you save</li>
+            <li>Save to / Open from encrypted vault</li>
+            <li>Lock clears the editor &amp; wipes keys</li>
+          </ul>
+          <span class="go">Launch InkVault →</span>
+        </a>
+      </div>
+
+      <pre class="code" aria-label="useVaultDialog quickstart"><span class="c">// Add encrypted save/open to any React app — @vaulty/core/react</span>
+<span class="k">const</span> { saveEncrypted, openEncrypted, VaultModal } = useVaultDialog();
+
+&lt;button onClick={() =&gt; saveEncrypted(<span class="s">'note.md'</span>, text)}&gt;Save encrypted&lt;/button&gt;
+&lt;button onClick={() =&gt; openEncrypted((file) =&gt; setText(file.text()))}&gt;Open encrypted&lt;/button&gt;
+&lt;VaultModal /&gt;</pre>
+
+      <p class="note">
+        <strong>Demo note:</strong> all three apps share this site’s browser storage origin. Each app keeps its own vaults, but
+        GhostDrop’s <em>duress</em> pattern is designed to wipe <em>everything</em> stored by this origin — including the other
+        two demos’ vaults. Use throwaway data here.
+      </p>
+
+      <footer>
+        <a href="https://github.com/isgudtek/vaulty-skeleton">Source on GitHub</a>
+        <span>MIT licensed</span>
+        <span>Encryption happens on your device · no accounts · no servers</span>
+      </footer>
+    </main>
+  </body>
+</html>

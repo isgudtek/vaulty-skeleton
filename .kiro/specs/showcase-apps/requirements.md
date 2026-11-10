@@ -1,6 +1,6 @@
 # Requirements — Showcase apps (`GhostDrop` + `CryptKeep`)
 
-Two functionally distinct PWAs that prove `@vaulty/core` is a reusable zero-knowledge SDK. Requirements use the
+Three functionally distinct PWAs that prove `@vaulty/core` is a reusable zero-knowledge SDK. Requirements use the
 **EARS** templates (`THE … SHALL`, `WHEN …`, `WHILE …`, `IF … THEN …`, `WHERE …`) and build on
 `.kiro/specs/vaulty-core/requirements.md` (referred to as `core R*`).
 
@@ -8,6 +8,8 @@ Two functionally distinct PWAs that prove `@vaulty/core` is a reusable zero-know
   files, voice notes, decoy vaults, duress wipe, `.vault` archives.
 - **CryptKeep** (`apps/cryptkeep`) — structured seed-phrase and TOTP 2FA vault. Proves: reactive typed JSON records,
   deterministic secrets (RFC 6238), clipboard hygiene, 9-word recovery.
+- **InkVault** (`apps/inkvault`) — an everyday Markdown scratchpad with drop-in "Save As Encrypted". Proves: an existing app can
+  adopt the SDK as a storage provider without changing its normal (unlocked, no-login) workflow.
 
 ---
 
@@ -21,6 +23,7 @@ Two functionally distinct PWAs that prove `@vaulty/core` is a reusable zero-know
 | S1.4 | THE apps SHALL NOT read or write `localStorage`, `sessionStorage`, cookies, or perform any network request for user data; the only network traffic SHALL be loading the static app shell. |
 | S1.5 | THE apps SHALL NOT use `console.*` or `Math.random`. |
 | S1.6 | THE architecture rules in S1.1–S1.5 SHALL be enforced by an automated test in each app (`tests/architecture.test.ts`). |
+| S1.7 | THE apps SHALL each use an app-specific storage root (`createBestStorageAdapter({ rootName, dbName })`) so that apps sharing one origin keep separate vaults. |
 | S2.1 | THE apps SHALL render `<PatternGrid />` from `@vaulty/core/react` as the only unlock control, skinned through its `nodeColor` / `activeColor` / `lineColor` / `className` props. |
 | S2.2 | THE lock screen SHALL NOT show any "wrong pattern", "incorrect" or "invalid password" message, and SHALL NOT describe the decoy, isolation or duress mechanisms; every valid pattern SHALL open a vault (core R7.2). A test asserts this on the rendered lock screen. |
 | S2.3 | THE lock screen SHALL be operable by keyboard (arrow keys, Space, Backspace, Enter, Escape) and SHALL describe those controls in text. |
@@ -82,3 +85,33 @@ Two functionally distinct PWAs that prove `@vaulty/core` is a reusable zero-know
 | C4.2 | THE app SHALL explain that recovery needs the snapshot file, because the phrase alone cannot locate a vault whose pattern is forgotten (core design §5). |
 | C4.3 | THE app SHALL export a snapshot of all seed and 2FA records as one `.vault` file and SHALL NOT include plaintext in it. |
 | C5.1 | THE app SHALL use an idle auto-lock shorter than GhostDrop's (90 s vs 120 s) reflecting its higher-value secrets. |
+
+## I — InkVault (`apps/inkvault`) — drop-in "Save As Encrypted" Markdown scratchpad
+
+InkVault proves an *everyday* app can adopt `@vaulty/core` as a storage provider without changing its normal workflow.
+
+| ID | Requirement |
+|----|-------------|
+| I1.1 | WHEN the app loads, THE app SHALL show a split-pane Markdown editor and live preview immediately, with no lock screen, pattern grid or dialog. |
+| I1.2 | THE toolbar SHALL provide New Note, Download `.md` (Plaintext), Save to Encrypted Vault and Open from Vault, and SHALL show Lock Vault (with the vault fingerprint) only WHILE the vault is unlocked. |
+| I1.3 | THE app SHALL NOT persist the draft anywhere (no web storage, no vault) until the user chooses Save to Encrypted Vault or Download `.md`; WHILE there are unsaved changes it SHALL warn before the page unloads. |
+| I1.4 | THE preview SHALL render Markdown with a built-in parser to React elements (never HTML strings): raw HTML SHALL appear as literal text, links SHALL be limited to http(s), mailto and in-page anchors, and images SHALL NOT be fetched (alt text is shown instead). |
+| I2.1 | WHEN Save to Encrypted Vault is chosen while locked, THE app SHALL open a modal with `<PatternGrid />`; WHEN a 6+ node pattern is drawn it SHALL unlock (or silently create) the vault, show the one-time 9-word phrase banner if the vault was created, and immediately encrypt the note with `putFile()` (`text/markdown`, tag `note`). |
+| I2.2 | WHILE unlocked, Save SHALL store directly without a pattern prompt, updating the same vault entry for a note that was opened or saved before; Ctrl/⌘+S SHALL trigger Save. |
+| I2.3 | THE app SHALL zero-fill the UTF-8 bytes it encrypts once `putFile` settles, and SHALL refuse to save an empty note. |
+| I3.1 | WHEN Open from Vault is chosen, THE app SHALL prompt for the pattern if locked, then list encrypted `.md` notes via `listEntries()`, and load the selected note into the editor via `getFile()`; it SHALL offer a two-step delete. |
+| I3.2 | IF opening a note or starting a New Note would discard unsaved changes, THEN THE app SHALL ask for confirmation first. |
+| I4.1 | WHEN the vault locks (Lock Vault, tab hidden, idle), THE app SHALL wipe keys (SDK) and clear the editor, title, preview, recovery phrase and any vault dialog **in the same frame**, and SHALL state that the vault locked. |
+| I4.2 | IF the vault was never unlocked, THEN hiding the tab SHALL NOT clear a plaintext draft. |
+| I5.1 | THE Vite config SHALL set `base: process.env.VITE_BASE_PATH || '/'`. |
+
+## P — GitHub Pages deployment
+
+| ID | Requirement |
+|----|-------------|
+| P1.1 | THE three apps SHALL set `base: process.env.VITE_BASE_PATH || '/'` in `vite.config.ts`, guarded by each app's architecture test. |
+| P1.2 | THE workflow `.github/workflows/deploy-pages.yml` SHALL run on `push` to `main` and `workflow_dispatch` with permissions `contents: read`, `pages: write`, `id-token: write`. |
+| P1.3 | THE workflow SHALL run `npm ci`, build `@vaulty/core`, build each app with `VITE_BASE_PATH=/vaulty-skeleton/<app>/`, assemble `_site/{ghostdrop,cryptkeep,inkvault}/` plus the switch landing page, and SHALL fail IF any app was built without its base path. |
+| P1.4 | THE workflow SHALL deploy with `actions/upload-pages-artifact@v3` and `actions/deploy-pages@v4`. |
+| P2.1 | THE switch landing page (`site/index.html`) SHALL summarise `@vaulty/core`, provide launch cards for GhostDrop, CryptKeep and InkVault (relative links), link to the GitHub repository, be responsive, ship a strict CSP, and load no remote resources. |
+| P2.2 | THE landing page SHALL warn that the apps share one origin and that GhostDrop's duress wipe clears the whole origin's browser data. |

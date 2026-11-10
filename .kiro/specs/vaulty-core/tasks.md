@@ -45,6 +45,14 @@ all green in `packages/core`). Requirement IDs refer to `requirements.md`.
 - [x] 4.4 `npm run build` — ESM + CJS + d.ts for `.` and `./react`; `react` not bundled
 - [x] 4.5 Built-artifact smoke test (ESM and CJS) with production 600 000-iteration defaults
 
+## 6. Plug-and-play dialog (`useVaultDialog`, R12.7–R12.12)
+- [x] 6.1 Split `src/react/index.ts` → `core.ts` (useVault, PatternGrid) + `dialog.tsx`, re-exported from `index.ts` (no circular import)
+- [x] 6.2 `useVaultDialog()` with stable `<VaultModal />` fed by a tiny external store (`useSyncExternalStore`)
+- [x] 6.3 Steps: unlock grid → one-time recovery phrase (blocks Escape) → save; file browser with delete + `.vault` export
+- [x] 6.4 Inline-styles-only, themeable modal; `react/jsx-runtime` kept external in the build; `check:security` + Kiro hook cover `.tsx`
+- [x] 6.5 15 tests in `tests/react.test.ts` (save/recovery/open/delete/export/cancel/lock-abort/duress/theme/unmount/render-loop) → core 220 tests
+- [x] 6.6 The README's 6-line snippet built as a throwaway app and driven in real Chrome (save → recovery → OPFS ciphertext → open)
+
 ## 5. Known limitations carried to later phases (see design.md §7)
 - [x] 5.0 T3 hardened: namespace id = domain-separated PBKDF2-HMAC-SHA256 with the configured `kdfIterations` (default 600 000) — R2.7/R2.8, design §3.1; tests cross-check against Node `pbkdf2Sync` and assert iteration counts
 - Residual after T3: the namespace salt is a public constant (precomputation across installs is possible) → candidate hardening: per-install salt (needs a non-secret global file; breaks cross-device addressing)

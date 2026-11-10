@@ -118,6 +118,7 @@ function render(size, theme) {
 const targets = {
   ghostdrop: { bg: '#090D16', node: '#334155', active: '#10B981', path: [0, 6, 12, 18, 24, 23, 22] },
   cryptkeep: { bg: '#18181B', node: '#52525B', active: '#F59E0B', path: [4, 8, 12, 16, 20, 21, 22, 23, 24] },
+  inkvault: { bg: '#FAF9F6', node: '#CBD5E1', active: '#4F46E5', path: [0, 5, 10, 11, 12, 7, 2, 3, 4, 9, 14] },
 };
 
 for (const [app, theme] of Object.entries(targets)) {

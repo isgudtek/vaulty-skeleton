@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en" class="bg-paper">
+  <head>
+    <meta charset="UTF-8" />
+    <!--CSP-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#FAF9F6" />
+    <meta name="color-scheme" content="light" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="description" content="InkVault — a distraction-free Markdown scratchpad. Write normally; save to an encrypted vault only when you want to. Powered by @vaulty/core." />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <title>InkVault</title>
+  </head>
+  <body class="bg-paper text-ink antialiased">
+    <noscript>InkVault needs JavaScript and Web Crypto to encrypt your notes locally.</noscript>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

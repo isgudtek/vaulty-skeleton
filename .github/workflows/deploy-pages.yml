@@ -1,0 +1,75 @@
+name: Deploy showcase to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; never cancel a deployment that is already running.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build @vaulty/core
+        run: npm run build --workspace=@vaulty/core
+
+      - name: Build the three showcase apps under their Pages sub-paths
+        run: |
+          VITE_BASE_PATH=/vaulty-skeleton/ghostdrop/ npm run build --workspace=ghostdrop
+          VITE_BASE_PATH=/vaulty-skeleton/cryptkeep/ npm run build --workspace=cryptkeep
+          VITE_BASE_PATH=/vaulty-skeleton/inkvault/ npm run build --workspace=inkvault
+
+      - name: Assemble _site (switch landing page + apps)
+        run: |
+          rm -rf _site
+          mkdir -p _site
+          cp -R apps/ghostdrop/dist _site/ghostdrop
+          cp -R apps/cryptkeep/dist _site/cryptkeep
+          cp -R apps/inkvault/dist _site/inkvault
+          cp site/index.html _site/index.html
+          touch _site/.nojekyll
+          # Fail the build if any app was built without the Pages base path.
+          for app in ghostdrop cryptkeep inkvault; do
+            grep -q "src=\"/vaulty-skeleton/$app/assets/" "_site/$app/index.html" || { echo "::error::$app built without VITE_BASE_PATH"; exit 1; }
+          done
+          find _site -maxdepth 2 | sort
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
