@@ -69,4 +69,4 @@ Requirement IDs refer to `requirements.md`.
 - [x] 6.3 `site/index.html` switch landing page: three launch cards, repo link, shared-origin/duress caveat, strict CSP (P2)
 - [x] 6.4 `.github/workflows/deploy-pages.yml` (P1.2–P1.4) — its `run:` steps executed verbatim locally; `_site` served under `/vaulty-skeleton/` and checked in Chrome
 - [x] 6.5 README: live demo links, three-app table and Mermaid diagram, `useVaultDialog()` 6-line quickstart first in Developer integration
-- [ ] 6.6 Live deployment verified on `https://isgudtek.github.io/vaulty-skeleton/` (completed after push — see commit history)
+- [x] 6.6 Live deployment verified on `https://isgudtek.github.io/vaulty-skeleton/`: workflow run green (build + deploy), every page/asset HTTP 200, and 15 real-Chrome checks on the live origin (service-worker scopes, 600k-PBKDF2 unlock in GhostDrop/CryptKeep with per-app OPFS roots, InkVault save → lock → open with no plaintext in OPFS)
