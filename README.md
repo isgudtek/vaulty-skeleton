@@ -1,95 +1,5 @@
 # Vaulty Skeleton
 
-**One zero-knowledge skeleton. Three completely different apps.**
-
-`@vaulty/core` is a zero-dependency, client-side vault SDK: draw a 5×5 pattern, get an encrypted vault with
-**plausible deniability**, a **forensic-safe duress wipe**, OPFS/IndexedDB storage and **portable encrypted `.vault` archives**.
-This repo proves it is a real skeleton by building three apps on it that share *no security code* and almost nothing visually —
-including one that shows how an **existing, ordinary app** adopts encryption without changing how people use it.
-
-## Live demos (GitHub Pages)
-
-| | |
-|---|---|
-| **Showcase switch page** | **https://isgudtek.github.io/vaulty-skeleton/** |
-| GhostDrop — binary & media whistleblower vault | https://isgudtek.github.io/vaulty-skeleton/ghostdrop/ |
-| CryptKeep — air-gapped seed phrase & TOTP 2FA vault | https://isgudtek.github.io/vaulty-skeleton/cryptkeep/ |
-| InkVault — drop-in "Save As Encrypted" Markdown editor | https://isgudtek.github.io/vaulty-skeleton/inkvault/ |
-
-Deployed by [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) on every push to `main`. The demos are static
-files: nothing you type or draw is sent anywhere.
-
-> **Demo caveat:** the three apps share one browser origin (`isgudtek.github.io`). Each keeps its vaults in its own storage root,
-> but GhostDrop's **duress** pattern is designed to wipe *everything* the origin stores — including the other two demos' vaults
-> (and any other `isgudtek.github.io` project site's browser data). Use throwaway data on the demo site.
-
-| | **GhostDrop** | **CryptKeep** | **InkVault** |
-|---|---|---|---|
-| For | Journalists & whistleblowers | Crypto holders & 2FA power users | Anyone writing notes — and any developer adding encryption to an existing app |
-| Data shape | **Binary** files, photos, PDFs, voice notes | **Structured JSON** seed phrases & TOTP secrets | **Plain Markdown** documents |
-| How encryption appears | A locked vault you unlock first | A locked vault you unlock first | **Never in the way:** normal editor first; the pattern appears only on *Save to Encrypted Vault* / *Open from Vault* |
-| SDK surface | `putFile` / `getFile` · decoy vaults · `configureDuress` · archives | `putRecord<T>` / `getRecord<T>` · 9-word recovery · archives | `putFile` / `getFile` / `listEntries` · lock-clears-buffer |
-| Look | Cyber-noir `#090D16`, emerald, monospace telemetry | Industrial light `#F8FAFC`/`#18181B`, amber `#F59E0B`, hardware-wallet LCDs | Editorial paper `#FAF9F6`, ink slate `#1E293B`, indigo `#4F46E5` |
-| Signature features | In-browser encrypted voice recorder · zero-leak in-memory previewer · panic wipe | RFC 6238 authenticator with live countdown ring · masked seed words · 15 s clipboard auto-clear | Split-pane live preview · XSS-safe built-in Markdown renderer · Ctrl/⌘+S saves encrypted |
-
-> Built for **Kiroween — Skeleton Crew**. The `.kiro/` folder (specs, steering, hook) is part of the submission and is fully tracked.
-
-<p align="center"><img src="docs/screenshots/pages-landing.png" alt="The GitHub Pages switch landing page with three launch cards" width="820"/></p>
-
-<table>
-  <tr>
-    <td><img src="docs/screenshots/ghostdrop-vault.png" alt="GhostDrop vault with sealed files and a voice note"/></td>
-    <td><img src="docs/screenshots/cryptkeep-totp.png" alt="CryptKeep live TOTP authenticator"/></td>
-    <td><img src="docs/screenshots/inkvault-editor.png" alt="InkVault split-pane Markdown editor in normal mode"/></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/ghostdrop-recovery.png" alt="GhostDrop one-time 9-word recovery phrase"/></td>
-    <td><img src="docs/screenshots/cryptkeep-seeds.png" alt="CryptKeep masked seed phrase with a single revealed word"/></td>
-    <td><img src="docs/screenshots/inkvault-save-modal.png" alt="InkVault Save to Encrypted Vault pattern modal"/></td>
-  </tr>
-</table>
-
-<sub>Captured from the production builds in real Chrome by `npm run e2e`.</sub>
-
----
-
-## Architecture
-
-```mermaid
-flowchart TB
-  subgraph apps["apps/ — Vite + React 19 + Tailwind 4 PWAs"]
-    GD["<b>GhostDrop</b><br/>drag-drop files · voice notes<br/>in-memory previews · duress · .vault"]
-    CK["<b>CryptKeep</b><br/>seed records · TOTP 2FA<br/>clipboard guard · 9-word recovery · .vault"]
-    IV["<b>InkVault</b><br/>everyday Markdown editor<br/>drop-in Save As Encrypted · Open from Vault"]
-  end
-
-  subgraph core["packages/core — @vaulty/core (zero runtime deps)"]
-    direction TB
-    DL["<b>useVaultDialog()</b> · &lt;VaultModal /&gt;<br/>6-line plug-and-play save/open"]
-    RE["<b>@vaulty/core/react</b><br/>useVault() · &lt;PatternGrid /&gt;"]
-    VC["<b>VaultClient</b><br/>plausible-deniability unlock · duress engine<br/>encrypted index · putFile/putRecord<br/>export/importArchive"]
-    CR["crypto.ts<br/>PBKDF2 · AES-256-GCM · AAD · MVK wrapping"]
-    ME["memory.ts<br/>SecureBuffer.wipe() · SessionGuard"]
-    ST["storage.ts<br/>OPFS · IndexedDB · memory · purge"]
-    DL --> RE --> VC --> CR
-    VC --> ME
-    VC --> ST
-  end
-
-  YOU["<b>Your existing app</b>"] -- "6 lines" --> DL
-  GD -- "imports only" --> RE
-  CK -- "imports only" --> RE
-  IV -- "imports only" --> RE
-  ST --> DISK[("OPFS → IndexedDB → memory<br/><i>ciphertext only · one root per app</i>")]
-```
-
-**The contract, enforced by tests:** each app's `tests/architecture.test.ts` scans its source and fails on any Web Crypto
-use (the single exception: HMAC *signing* for RFC 6238 TOTP in CryptKeep), web storage, browser databases, network I/O,
-`console`, raw-HTML injection, unexpected imports, or extra runtime dependencies. All three apps depend only on
-`@vaulty/core`, `react` and `react-dom` — InkVault even renders Markdown with its own small, XSS-safe parser rather than add a library.
-
----
-
 ## Security architecture (summary)
 
 | Mechanism | What it does |
@@ -359,6 +269,96 @@ the deferred-render preview for a few frames after *Lock Vault*.
 | GitHub Pages simulation | the workflow's own build steps, served under `/vaulty-skeleton/`: switch page cards, each app's assets and service-worker scope under its sub-path, and per-app storage roots verified in Chrome |
 | RFC conformance | TOTP passes RFC 4226 Appendix D and RFC 6238 Appendix B vectors; SHA-256/512 cross-checked against Node's independent HMAC |
 | Mutation checks | InkVault's lifecycle tests fail when the editor or recovery phrase is not cleared on lock, or a draft is written to `localStorage` |
+
+---
+
+**One zero-knowledge skeleton. Three completely different apps.**
+
+`@vaulty/core` is a zero-dependency, client-side vault SDK: draw a 5×5 pattern, get an encrypted vault with
+**plausible deniability**, a **forensic-safe duress wipe**, OPFS/IndexedDB storage and **portable encrypted `.vault` archives**.
+This repo proves it is a real skeleton by building three apps on it that share *no security code* and almost nothing visually —
+including one that shows how an **existing, ordinary app** adopts encryption without changing how people use it.
+
+## Live demos (GitHub Pages)
+
+| | |
+|---|---|
+| **Showcase switch page** | **https://isgudtek.github.io/vaulty-skeleton/** |
+| GhostDrop — binary & media whistleblower vault | https://isgudtek.github.io/vaulty-skeleton/ghostdrop/ |
+| CryptKeep — air-gapped seed phrase & TOTP 2FA vault | https://isgudtek.github.io/vaulty-skeleton/cryptkeep/ |
+| InkVault — drop-in "Save As Encrypted" Markdown editor | https://isgudtek.github.io/vaulty-skeleton/inkvault/ |
+
+Deployed by [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) on every push to `main`. The demos are static
+files: nothing you type or draw is sent anywhere.
+
+> **Demo caveat:** the three apps share one browser origin (`isgudtek.github.io`). Each keeps its vaults in its own storage root,
+> but GhostDrop's **duress** pattern is designed to wipe *everything* the origin stores — including the other two demos' vaults
+> (and any other `isgudtek.github.io` project site's browser data). Use throwaway data on the demo site.
+
+| | **GhostDrop** | **CryptKeep** | **InkVault** |
+|---|---|---|---|
+| For | Journalists & whistleblowers | Crypto holders & 2FA power users | Anyone writing notes — and any developer adding encryption to an existing app |
+| Data shape | **Binary** files, photos, PDFs, voice notes | **Structured JSON** seed phrases & TOTP secrets | **Plain Markdown** documents |
+| How encryption appears | A locked vault you unlock first | A locked vault you unlock first | **Never in the way:** normal editor first; the pattern appears only on *Save to Encrypted Vault* / *Open from Vault* |
+| SDK surface | `putFile` / `getFile` · decoy vaults · `configureDuress` · archives | `putRecord<T>` / `getRecord<T>` · 9-word recovery · archives | `putFile` / `getFile` / `listEntries` · lock-clears-buffer |
+| Look | Cyber-noir `#090D16`, emerald, monospace telemetry | Industrial light `#F8FAFC`/`#18181B`, amber `#F59E0B`, hardware-wallet LCDs | Editorial paper `#FAF9F6`, ink slate `#1E293B`, indigo `#4F46E5` |
+| Signature features | In-browser encrypted voice recorder · zero-leak in-memory previewer · panic wipe | RFC 6238 authenticator with live countdown ring · masked seed words · 15 s clipboard auto-clear | Split-pane live preview · XSS-safe built-in Markdown renderer · Ctrl/⌘+S saves encrypted |
+
+> Built for **Kiroween — Skeleton Crew**. The `.kiro/` folder (specs, steering, hook) is part of the submission and is fully tracked.
+
+<p align="center"><img src="docs/screenshots/pages-landing.png" alt="The GitHub Pages switch landing page with three launch cards" width="820"/></p>
+
+<table>
+  <tr>
+    <td><img src="docs/screenshots/ghostdrop-vault.png" alt="GhostDrop vault with sealed files and a voice note"/></td>
+    <td><img src="docs/screenshots/cryptkeep-totp.png" alt="CryptKeep live TOTP authenticator"/></td>
+    <td><img src="docs/screenshots/inkvault-editor.png" alt="InkVault split-pane Markdown editor in normal mode"/></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/ghostdrop-recovery.png" alt="GhostDrop one-time 9-word recovery phrase"/></td>
+    <td><img src="docs/screenshots/cryptkeep-seeds.png" alt="CryptKeep masked seed phrase with a single revealed word"/></td>
+    <td><img src="docs/screenshots/inkvault-save-modal.png" alt="InkVault Save to Encrypted Vault pattern modal"/></td>
+  </tr>
+</table>
+
+<sub>Captured from the production builds in real Chrome by `npm run e2e`.</sub>
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TB
+  subgraph apps["apps/ — Vite + React 19 + Tailwind 4 PWAs"]
+    GD["<b>GhostDrop</b><br/>drag-drop files · voice notes<br/>in-memory previews · duress · .vault"]
+    CK["<b>CryptKeep</b><br/>seed records · TOTP 2FA<br/>clipboard guard · 9-word recovery · .vault"]
+    IV["<b>InkVault</b><br/>everyday Markdown editor<br/>drop-in Save As Encrypted · Open from Vault"]
+  end
+
+  subgraph core["packages/core — @vaulty/core (zero runtime deps)"]
+    direction TB
+    DL["<b>useVaultDialog()</b> · &lt;VaultModal /&gt;<br/>6-line plug-and-play save/open"]
+    RE["<b>@vaulty/core/react</b><br/>useVault() · &lt;PatternGrid /&gt;"]
+    VC["<b>VaultClient</b><br/>plausible-deniability unlock · duress engine<br/>encrypted index · putFile/putRecord<br/>export/importArchive"]
+    CR["crypto.ts<br/>PBKDF2 · AES-256-GCM · AAD · MVK wrapping"]
+    ME["memory.ts<br/>SecureBuffer.wipe() · SessionGuard"]
+    ST["storage.ts<br/>OPFS · IndexedDB · memory · purge"]
+    DL --> RE --> VC --> CR
+    VC --> ME
+    VC --> ST
+  end
+
+  YOU["<b>Your existing app</b>"] -- "6 lines" --> DL
+  GD -- "imports only" --> RE
+  CK -- "imports only" --> RE
+  IV -- "imports only" --> RE
+  ST --> DISK[("OPFS → IndexedDB → memory<br/><i>ciphertext only · one root per app</i>")]
+```
+
+**The contract, enforced by tests:** each app's `tests/architecture.test.ts` scans its source and fails on any Web Crypto
+use (the single exception: HMAC *signing* for RFC 6238 TOTP in CryptKeep), web storage, browser databases, network I/O,
+`console`, raw-HTML injection, unexpected imports, or extra runtime dependencies. All three apps depend only on
+`@vaulty/core`, `react` and `react-dom` — InkVault even renders Markdown with its own small, XSS-safe parser rather than add a library.
 
 ---
 
