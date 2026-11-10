@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Zero-knowledge, zero-dependency client-side vault SDK: pattern-derived keys, plausible deniability, duress wipe, OPFS/IndexedDB storage and portable encrypted archives.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/isgudtek/vaulty-skeleton.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/isgudtek/vaulty-skeleton/tree/main/packages/core#readme",
+  "bugs": {
+    "url": "https://github.com/isgudtek/vaulty-skeleton/issues"
+  },
   "type": "module",
   "sideEffects": false,
   "main": "./dist/index.cjs",
@@ -41,17 +50,22 @@
   },
   "scripts": {
     "build": "tsup",
+    "prepare": "npm run build",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "check:security": "node scripts/check-security.mjs",
-    "prepublishOnly": "npm run typecheck && npm run check:security && npm test && npm run build"
+    "prepublishOnly": "npm run typecheck && npm run check:security && npm test"
   },
   "peerDependencies": {
-    "react": ">=18.0.0"
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "peerDependenciesMeta": {
     "react": {
+      "optional": true
+    },
+    "react-dom": {
       "optional": true
     }
   },

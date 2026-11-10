@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Plug-and-play "Save As Encrypted" / "Open Encrypted" for any React app.
  *
@@ -6,8 +8,9 @@
  *   <button onClick={() => openEncrypted((f) => setText(f.text()))}>Open encrypted</button>
  *   <VaultModal />
  *
- * The modal is self-contained: inline styles only (no Tailwind, no CSS file), accessible (labelled dialog,
- * Escape to cancel, focus moved into the dialog), and themeable. All cryptography stays in VaultClient.
+ * The modal is self-contained: inline styles only (no Tailwind, no CSS file), rendered through a portal into
+ * `document.body` (SSR-safe), accessible (labelled `aria-modal` dialog, Tab/Shift+Tab focus trap, Escape to cancel,
+ * focus restored on close), and themeable. All cryptography stays in VaultClient.
  */
 import {
   type CSSProperties,
@@ -20,6 +23,7 @@ import {
   useState,
   useSyncExternalStore,
 } from 'react';
+import { createPortal } from 'react-dom';
 import type { PatternNode, VaultMetadataEntry } from '../types';
 import { PatternGrid, type UseVaultOptions, type UseVaultResult, useVault } from './core';
 
@@ -134,6 +138,13 @@ interface Snapshot {
 }
 
 const CLOSED: View = { kind: 'closed' };
+
+/** Elements the Tab focus trap cycles through. */
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/** `useLayoutEffect` on the client, `useEffect` on the server (avoids the SSR warning in React 18). */
+const useIsomorphicLayoutEffect = typeof document !== 'undefined' ? useLayoutEffect : useEffect;
 
 const MIME_BY_EXT: Record<string, string> = {
   md: 'text/markdown',
@@ -396,7 +407,7 @@ export function useVaultDialog(options: UseVaultDialogOptions = {}): UseVaultDia
   if (s.snapshot.view !== view || JSON.stringify(s.snapshot.theme) !== themeKey || s.snapshot.title !== title) {
     s.snapshot = { view, theme, title, actions: stableActions };
   }
-  useLayoutEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     for (const l of [...s.listeners]) l();
   });
 
@@ -432,28 +443,85 @@ function VaultModalView({ snapshot }: { snapshot: Snapshot }) {
   const { view, theme: t, title, actions } = snapshot;
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | SVGElement | null>(null);
+  const open = view.kind !== 'closed';
   const busy = (view.kind === 'unlock' && view.busy) || (view.kind === 'browse' && view.busy) || (view.kind === 'saving' && !view.error);
 
-  // Move focus into the dialog whenever the step changes.
+  // Remember what had focus when the modal opened, and give it back when the modal closes.
   useEffect(() => {
-    if (view.kind === 'closed') return;
-    const target =
-      panelRef.current?.querySelector<HTMLElement>('[data-autofocus]') ??
-      panelRef.current?.querySelector<HTMLElement>('svg[role="application"], button');
-    target?.focus();
-  }, [view.kind]);
-
-  useEffect(() => {
-    if (view.kind === 'closed') return;
-    const onKey = (e: KeyboardEvent) => {
-      // The one-time recovery phrase can only be left via the explicit "I have written this down" button.
-      if (e.key === 'Escape' && !busy && view.kind !== 'recovery') actions.close();
+    if (!open) return;
+    const active = document.activeElement;
+    restoreFocusRef.current = active instanceof HTMLElement || active instanceof SVGElement ? active : null;
+    return () => {
+      const el = restoreFocusRef.current;
+      restoreFocusRef.current = null;
+      if (el?.isConnected) el.focus();
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [view.kind, busy, actions]);
+  }, [open]);
 
-  if (view.kind === 'closed') return null;
+  // Move focus into the dialog whenever the step changes. Priority: an explicit [data-autofocus] control, then the
+  // pattern grid (so keyboard users can draw immediately), then the first enabled button, then the panel itself.
+  useEffect(() => {
+    if (!open) return;
+    const panel = panelRef.current;
+    const target =
+      panel?.querySelector<HTMLElement>('[data-autofocus]') ??
+      panel?.querySelector<SVGElement>('svg[role="application"][tabindex="0"]') ??
+      panel?.querySelector<HTMLElement>('button:not([disabled])') ??
+      panel;
+    target?.focus();
+  }, [open, view.kind]);
+
+  // Escape to cancel (except on the recovery-phrase step) + Tab/Shift+Tab focus trap + focus containment.
+  useEffect(() => {
+    if (!open) return;
+    const focusables = (): Array<HTMLElement | SVGElement> =>
+      Array.from(panelRef.current?.querySelectorAll<HTMLElement | SVGElement>(FOCUSABLE) ?? []).filter(
+        (el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true',
+      );
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // The one-time recovery phrase can only be left via the explicit "I have written this down" button.
+        if (!busy && view.kind !== 'recovery') actions.close();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const items = focusables();
+      if (items.length === 0) {
+        e.preventDefault();
+        panel.focus();
+        return;
+      }
+      const first = items[0] as HTMLElement | SVGElement;
+      const last = items[items.length - 1] as HTMLElement | SVGElement;
+      const active = document.activeElement;
+      const inside = active !== null && panel.contains(active);
+      if (e.shiftKey && (!inside || active === first || active === panel)) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (!inside || active === last)) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    // If focus escapes by other means (programmatic focus, assistive tech), pull it back inside.
+    const onFocusIn = (e: FocusEvent) => {
+      const panel = panelRef.current;
+      if (panel && e.target instanceof Node && !panel.contains(e.target)) {
+        (focusables()[0] ?? panel).focus();
+      }
+    };
+    document.addEventListener('keydown', onKey, true);
+    document.addEventListener('focusin', onFocusIn);
+    return () => {
+      document.removeEventListener('keydown', onKey, true);
+      document.removeEventListener('focusin', onFocusIn);
+    };
+  }, [open, view.kind, busy, actions]);
+
+  if (!open) return null;
 
   const button = (tone: 'primary' | 'ghost' | 'danger'): CSSProperties => ({
     font: `600 14px/1.2 ${t.fontFamily}`,
@@ -606,7 +674,7 @@ function VaultModalView({ snapshot }: { snapshot: Snapshot }) {
     );
   }
 
-  return (
+  const overlay = (
     <div
       role="presentation"
       data-vaulty-modal=""
@@ -624,6 +692,7 @@ function VaultModalView({ snapshot }: { snapshot: Snapshot }) {
     >
       <div
         ref={panelRef}
+        tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -655,4 +724,8 @@ function VaultModalView({ snapshot }: { snapshot: Snapshot }) {
       </div>
     </div>
   );
+
+  // Portal into <body> so ancestors with `transform`, `overflow: hidden` or a low `z-index` cannot clip the modal.
+  // Guarded for SSR: there is no document on the server (and the modal is always closed there anyway).
+  return typeof document === 'undefined' ? overlay : createPortal(overlay, document.body);
 }

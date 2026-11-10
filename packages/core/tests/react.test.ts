@@ -325,7 +325,8 @@ describe('useVaultDialog()', () => {
   let renders = 0;
   let adapter: MemoryStorageAdapter;
 
-  const modal = () => container.querySelector<HTMLElement>('[role="dialog"]');
+  // The modal is portalled into <body>, so look for it in the whole document.
+  const modal = () => document.querySelector<HTMLElement>('[role="dialog"]');
   const grid = () => modal()!.querySelector<SVGSVGElement>('svg[role="application"]')!;
   const buttonIn = (root: ParentNode, label: string) =>
     Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
@@ -374,7 +375,7 @@ describe('useVaultDialog()', () => {
     return n;
   };
 
-  function Host(props: { duress?: number[]; theme?: Partial<VaultModalTheme> }) {
+  function Host(props: { duress?: number[]; theme?: Partial<VaultModalTheme>; clip?: boolean }) {
     renders++;
     dlg = useVaultDialog({
       adapter,
@@ -382,7 +383,13 @@ describe('useVaultDialog()', () => {
       ...(props.duress ? { duressPattern: props.duress } : {}),
       ...(props.theme ? { theme: props.theme } : {}),
     });
-    return h(dlg.VaultModal);
+    // `clip` wraps the modal in an ancestor that would trap a non-portalled `position: fixed` element.
+    return h(
+      'div',
+      props.clip ? { 'data-testid': 'clipper', style: { transform: 'translateZ(0)', overflow: 'hidden', width: 10, height: 10 } } : null,
+      h('button', { type: 'button', id: 'opener' }, 'Host button'),
+      h(dlg.VaultModal),
+    );
   }
 
   async function mountHost(props: Parameters<typeof Host>[0] = {}) {
@@ -677,11 +684,11 @@ describe('useVaultDialog()', () => {
       void dlg.saveEncrypted('n.txt', 'x');
     });
     await until(() => modal());
-    const overlay = container.querySelector<HTMLElement>('[data-vaulty-modal]')!;
+    const overlay = document.querySelector<HTMLElement>('[data-vaulty-modal]')!;
     expect(overlay.style.position).toBe('fixed');
     expect(overlay.className).toBe('');
     expect(modal()!.className).toBe('');
-    expect(container.querySelector('[class]')).toBeNull(); // no CSS classes anywhere in the modal
+    expect(overlay.querySelector('[class]')).toBeNull(); // no CSS classes anywhere in the modal
     expect(grid().innerHTML).toContain('fill="#123456"'); // nodeColor drives the PatternGrid
     expect(modal()!.getAttribute('aria-labelledby')).toBeTruthy();
 
@@ -701,6 +708,88 @@ describe('useVaultDialog()', () => {
     await flush();
     expect(result).toBeNull();
     root = createRoot(container);
+  });
+
+  it('renders through a portal into <body>, escaping clipping/transformed ancestors', async () => {
+    await mountHost({ clip: true });
+    act(() => {
+      void dlg.saveEncrypted('n.txt', 'x');
+    });
+    await until(() => modal());
+    const overlay = document.querySelector('[data-vaulty-modal]')!;
+    expect(overlay.parentElement).toBe(document.body);
+    expect(container.querySelector('[data-vaulty-modal]')).toBeNull();
+    expect(container.querySelector('[data-testid="clipper"]')!.contains(overlay)).toBe(false);
+    act(() => root.unmount()); // unmounting the host removes the portal content too
+    expect(document.querySelector('[data-vaulty-modal]')).toBeNull();
+    root = createRoot(container);
+  });
+
+  describe('focus management', () => {
+    const tab = (shiftKey = false) =>
+      act(() => {
+        document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true, cancelable: true }));
+      });
+
+    it('traps Tab / Shift+Tab inside the dialog and wraps at both ends', async () => {
+      await mountHost();
+      act(() => {
+        void dlg.saveEncrypted('n.txt', 'x');
+      });
+      await until(() => modal());
+      const closeBtn = buttonIn(modal()!, 'Close dialog')!;
+      const gridEl = grid();
+      // Focus starts on the pattern grid, so keyboard users can draw straight away.
+      expect(document.activeElement).toBe(gridEl);
+
+      // Last → Tab → first
+      act(() => gridEl.focus());
+      tab();
+      expect(document.activeElement).toBe(closeBtn);
+      // First → Shift+Tab → last
+      tab(true);
+      expect(document.activeElement).toBe(gridEl);
+    });
+
+    it('pulls focus back inside if it escapes to the page behind', async () => {
+      await mountHost();
+      act(() => {
+        void dlg.saveEncrypted('n.txt', 'x');
+      });
+      await until(() => modal());
+      act(() => (container.querySelector('#opener') as HTMLButtonElement).focus());
+      expect(modal()!.contains(document.activeElement)).toBe(true);
+    });
+
+    it('keeps focus on the only control of a step (recovery phrase)', async () => {
+      await mountHost();
+      act(() => {
+        void dlg.saveEncrypted('n.txt', 'x');
+      });
+      await until(() => modal());
+      draw(grid(), PATTERN_A);
+      const confirm = await until(() => buttonIn(modal() ?? document, 'I have written this down'));
+      expect(document.activeElement).toBe(confirm);
+      tab();
+      expect(document.activeElement).toBe(confirm);
+      tab(true);
+      expect(document.activeElement).toBe(confirm);
+    });
+
+    it('restores focus to the element that opened the modal', async () => {
+      await mountHost();
+      const opener = container.querySelector<HTMLButtonElement>('#opener')!;
+      act(() => opener.focus());
+      act(() => {
+        void dlg.openEncrypted(() => undefined);
+      });
+      await until(() => modal());
+      expect(document.activeElement).not.toBe(opener);
+      press(buttonIn(modal()!, 'Close dialog')!);
+      await flush();
+      expect(modal()).toBeNull();
+      expect(document.activeElement).toBe(opener);
+    });
   });
 
   it('does not get stuck in a render loop', async () => {

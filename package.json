@@ -23,7 +23,8 @@
     "typecheck": "npm run build:core && npm run typecheck --workspaces --if-present",
     "check:security": "npm run check:security --workspace @vaulty/core",
     "icons": "node scripts/gen-icons.mjs",
-    "e2e": "npm run build:all && node e2e/browser-check.mjs"
+    "e2e": "npm run build:all && node e2e/browser-check.mjs",
+    "verify:pack": "node scripts/verify-pack.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "25.16.0"
