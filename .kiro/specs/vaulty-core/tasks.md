@@ -53,6 +53,15 @@ all green in `packages/core`). Requirement IDs refer to `requirements.md`.
 - [x] 6.5 15 tests in `tests/react.test.ts` (save/recovery/open/delete/export/cancel/lock-abort/duress/theme/unmount/render-loop) → core 220 tests
 - [x] 6.6 The README's 6-line snippet built as a throwaway app and driven in real Chrome (save → recovery → OPFS ciphertext → open)
 
+## 7. External installability & dialog hardening (R12.13–R12.16, R14)
+- [x] 7.1 `prepare: npm run build`; repository metadata; package `README.md` + `LICENSE`; `react-dom` optional peer (R14.1–R14.3)
+- [x] 7.2 `'use client'` in source; post-build re-insertion into `dist/react.{js,cjs}` with source maps shifted one line; idempotent (R12.15)
+- [x] 7.3 Portal into `document.body` (SSR-guarded); Tab/Shift+Tab trap; focus containment; grid-first initial focus; focus restore (R12.13–R12.14)
+- [x] 7.4 Tests: portal, 4 focus-management tests, 3 SSR tests in a DOM-less Node environment → core 228; portal / trap / restore each mutation-checked
+- [x] 7.5 `scripts/verify-pack.mjs` (`npm run verify:pack -- --all`): 47/47 — tarball audit; standalone Vite + React 19 / React 18 and Next.js 16 projects; strict typecheck; Node ESM+CJS; builds; real Chrome (R14.4)
+- [x] 7.6 Git installs verified: fresh clone + `npm ci` runs `prepare`; pnpm 10 `#path:/packages/core` install works with the `onlyBuiltDependencies` allow-list (the public `github:` form verified after push)
+- [x] 7.7 README install / requirements / CSP / Next.js / empty-vault guidance (R14.5)
+
 ## 5. Known limitations carried to later phases (see design.md §7)
 - [x] 5.0 T3 hardened: namespace id = domain-separated PBKDF2-HMAC-SHA256 with the configured `kdfIterations` (default 600 000) — R2.7/R2.8, design §3.1; tests cross-check against Node `pbkdf2Sync` and assert iteration counts
 - Residual after T3: the namespace salt is a public constant (precomputation across installs is possible) → candidate hardening: per-install salt (needs a non-secret global file; breaks cross-device addressing)

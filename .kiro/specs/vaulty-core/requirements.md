@@ -154,6 +154,20 @@ derived from a secret; **namespace** = `hex(PBKDF2-HMAC-SHA256("vaulty-ns:v2:" +
 | R12.10 | THE dialog SHALL never mutate the caller's `Uint8Array`; it SHALL encrypt its own copy and zero-fill that copy once stored or cancelled. |
 | R12.11 | IF the user cancels, the vault locks while the modal is past the unlock step, the duress pattern is entered, or the host unmounts, THEN the pending promise SHALL settle (`null` / `false`) and nothing SHALL be stored. Escape SHALL cancel on every step except the recovery-phrase step. |
 | R12.12 | THE `<VaultModal />` SHALL use inline styles only (no CSS classes, no stylesheet, no CSS framework), SHALL be a labelled `aria-modal` dialog that moves focus inside, and SHALL be themeable via `options.theme`. |
+| R12.13 | THE `<VaultModal />` SHALL render through `createPortal(…, document.body)` and SHALL render inline only WHERE `document` is undefined (SSR). |
+| R12.14 | WHILE the modal is open, THE dialog SHALL trap Tab / Shift+Tab inside the panel (wrapping at both ends), SHALL pull focus back if it moves outside, SHALL focus the pattern grid (or the step's primary control) first, and SHALL restore focus to the previously focused element WHEN it closes. |
+| R12.15 | THE source of `src/react/index.ts` and `src/react/dialog.tsx` SHALL begin with `'use client'`, AND THE built `dist/react.js` / `dist/react.cjs` SHALL begin with `"use client";` (re-inserted after bundling, with source maps shifted accordingly), so the entry works with Next.js App Router Server Components. |
+| R12.16 | `@vaulty/core/react` SHALL server-render (Node, no DOM) without throwing or logging errors. |
+
+## R14 — Installability outside the monorepo
+
+| ID | Requirement |
+|----|-------------|
+| R14.1 | THE package SHALL define `"prepare": "npm run build"` so that `npm pack`, workspace installs and Git-based installs produce `dist/` automatically, with `tsup` and `typescript` pinned in `devDependencies`. |
+| R14.2 | THE packed tarball SHALL contain only `package.json`, `README.md`, `LICENSE` and `dist/` (no source, tests, scripts or configs). |
+| R14.3 | THE package SHALL declare `react` and `react-dom` (≥ 18) as optional peer dependencies and SHALL keep them external in the build. |
+| R14.4 | `npm run verify:pack` SHALL install the tarball into standalone projects outside the repository (Vite + React 19; optionally React 18 and Next.js App Router), type-check them strictly, build them, and exercise the 6-line `useVaultDialog()` integration in a real browser where available. |
+| R14.5 | THE documentation SHALL state only install methods that have been verified, and SHALL state that `npm install github:…` cannot install a sub-folder of this repository. |
 
 ## R13 — Tooling guard
 

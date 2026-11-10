@@ -123,11 +123,62 @@ We would rather you hear these from us:
 - **Whole-file encryption in memory.** `putFile` takes a `Uint8Array`; GhostDrop caps files at 512 MiB. Chunked/streaming AEAD is future core work.
 - **Clipboard:** the 15 s overwrite cannot verify the clipboard still holds our secret; OS clipboard history may keep copies.
 - **A bystander sees decoys.** A mistyped pattern creates an empty vault and shows a recovery phrase once. The runtime-option duress path is faster than a normal unlock (no KDF); the in-vault duress path is not.
-- **Out of scope:** XSS in the host page, malicious extensions, a compromised OS, keyloggers. Our real-browser test runs on Chrome only.
+- **Out of scope:** XSS in the host page, malicious extensions, a compromised OS, keyloggers. Real-browser tests run in Chrome only (React 19, React 18 and Next.js 16 builds); Safari and Firefox are untested.
 
 ---
 
 ## Developer integration
+
+### Install it today
+
+`@vaulty/core` is **not on the npm registry yet**. These three ways work today — each one is exercised by
+`npm run verify:pack` or was tested against this repository:
+
+**1. Tarball (npm, pnpm, yarn — recommended).** `prepare` builds `dist/` automatically when you pack:
+
+```bash
+git clone https://github.com/isgudtek/vaulty-skeleton.git
+cd vaulty-skeleton && npm ci
+npm pack --workspace @vaulty/core          # → vaulty-core-0.1.0.tgz (≈ 206 kB, dist/ + README + LICENSE only)
+
+cd /path/to/your-app
+npm install /path/to/vaulty-skeleton/vaulty-core-0.1.0.tgz
+```
+
+**2. pnpm straight from GitHub** (pnpm can install a sub-folder of a repo; pnpm 10 asks you to allow the build step):
+
+```bash
+printf 'onlyBuiltDependencies:\n  - "@vaulty/core"\n' >> pnpm-workspace.yaml
+pnpm add "github:isgudtek/vaulty-skeleton#path:/packages/core"
+```
+
+**3. Inside this monorepo:** add `"@vaulty/core": "0.1.0"` to a workspace's dependencies (as the three apps do).
+
+> `npm install github:isgudtek/vaulty-skeleton` does **not** work: npm cannot install a sub-folder of a Git repository,
+> and the repository root is a private monorepo. Use the tarball.
+
+`npm run verify:pack -- --all` proves the external path end to end. It packs the SDK, then installs it **outside this repo** into
+fresh Vite + React 19, Vite + React 18 and Next.js 16 (App Router) projects; type-checks them under `strict`, builds them, and drives
+the six lines below in real Chrome — **47/47 checks**.
+
+### Requirements & integration notes
+
+- **Secure context only.** Web Crypto's `crypto.subtle` exists only on **HTTPS** or `http://localhost`. On plain HTTP (e.g. a LAN IP)
+  unlocking fails.
+- **React 18 or 19** with `react-dom` for `@vaulty/core/react` (both optional peer dependencies). `@vaulty/core` itself has no React and no
+  runtime dependencies at all.
+- **Content-Security-Policy:** the modal and `<PatternGrid />` style themselves with inline `style` attributes, so a strict CSP needs
+  `style-src 'self' 'unsafe-inline'`. No `unsafe-eval`, no remote origins and no `connect-src` are required.
+- **Next.js (App Router):** the built `@vaulty/core/react` starts with `"use client"`, so its components can be rendered from Server
+  Components (verified: `<PatternGrid />` inside a server `page.tsx`, SSR-prerendered by `next build`). Hooks like `useVaultDialog()`
+  must be called in your own `'use client'` component — the normal rule for any React hook. `@vaulty/core` can be imported anywhere.
+- **The modal** is portalled into `document.body` (no clipping by `transform`/`overflow` ancestors), traps Tab / Shift+Tab, keeps
+  focus inside, returns focus to the opener on close, and renders nothing during SSR.
+- **One storage root per app** if several apps share an origin: `useVaultDialog({ adapter: () => createBestStorageAdapter({ rootName: 'my-app' }) })`.
+- **Tell your users how deniability behaves.** There is *no* "wrong pattern" error, by design: a mistyped pattern silently opens a
+  **different, empty vault** (and, the first time, shows a brand-new recovery phrase). To a user it looks like their files vanished.
+  Say so in your UI copy (e.g. "Empty vault? Draw your pattern again — every pattern opens its own vault."), and consider showing the
+  `namespaceId` fingerprint so people can recognise *their* vault. Don't add a "wrong pattern" check — that would break deniability.
 
 ### 6-line plug-and-play: `useVaultDialog()`
 
@@ -164,7 +215,7 @@ modal is open — idle timeout, hidden tab — the pending save is aborted and n
 
 ### More control: `useVault()` + `<PatternGrid />`
 
-This is what the three showcase apps use. `@vaulty/core` is a workspace package in this monorepo (not yet published to npm).
+This is what the three showcase apps use (install as above).
 
 ```tsx
 import { useState } from 'react';
@@ -255,13 +306,14 @@ npm run check:security      # static Web Crypto / storage hygiene check of the S
 npm run test:all            # core + GhostDrop + CryptKeep + InkVault
 npm run build:all           # core (ESM+CJS+d.ts) and the three production PWAs
 npm run e2e                 # real-Chrome end-to-end checks (needs Chrome; CHROME_PATH to override)
+npm run verify:pack -- --all  # pack the SDK and prove it installs/builds/runs in standalone React 19, React 18 and Next.js apps
 ```
 
 Sub-path hosting: `VITE_BASE_PATH=/some/path/ npm run build --workspace inkvault` (all three apps honour it; the Pages workflow uses it).
 The dev server and `vite preview` need a *secure context* for OPFS and Web Crypto — `localhost` qualifies.
 
 ```
-packages/core/          @vaulty/core — SDK source, tsup build, 220 tests
+packages/core/          @vaulty/core — SDK source, tsup build, 228 tests
 apps/ghostdrop/         GhostDrop PWA — 40 tests
 apps/cryptkeep/         CryptKeep PWA — 92 tests
 apps/inkvault/          InkVault PWA — 74 tests
@@ -297,10 +349,12 @@ the deferred-render preview for a few frames after *Lock Vault*.
 | Check | Result |
 |---|---|
 | `npm run typecheck` (strict, `noUncheckedIndexedAccess`) | 0 errors in `packages/core` and all three apps |
-| `npm run test:all` | **426 tests pass** — core 220 · GhostDrop 40 · CryptKeep 92 · InkVault 74 |
+| `npm run test:all` | **434 tests pass** — core 228 · GhostDrop 40 · CryptKeep 92 · InkVault 74 |
 | `@vaulty/core` coverage (v8) | 97.8 % lines · 95.2 % statements · 95.5 % functions · 89.1 % branches (not 100 %: defensive error paths) |
 | `npm run build:all` | core ESM + CJS + `.d.ts` (`react` and `react/jsx-runtime` kept external); GhostDrop 292 kB JS (94 kB gzip) · CryptKeep 297 kB (96 kB) · InkVault 284 kB (93 kB) |
-| `npm run check:security` | clean (11 SDK source files, including the new `dialog.tsx`); the checker itself is tested against every violation class |
+| `npm run check:security` | clean (11 SDK source files, including `dialog.tsx`); the checker itself is tested against every violation class |
+| `npm run verify:pack -- --all` | **47/47 external-consumer checks**: `npm pack` runs `prepare`; tarball holds only `dist/` + README + LICENSE; installed **outside the monorepo** into fresh Vite + React 19, Vite + React 18 and Next.js 16 App Router projects; strict typecheck against the packed `.d.ts` (`skipLibCheck: false`); Node ESM + CJS; `vite build` / `next build` (SSR prerender, `<PatternGrid />` from a Server Component); real Chrome: portal, real Tab key focus trap, save → recovery → OPFS ciphertext → open, zero page errors |
+| Git installs | fresh `git clone` + `npm ci` builds `packages/core/dist` via `prepare`; `pnpm add "…#path:/packages/core"` (with the `onlyBuiltDependencies` allow-list) installs and runs |
 | `npm run e2e` | **29/29 real-Chrome checks**: real 600,000-iteration PBKDF2 (≈ 0.7–1.1 s create+unlock), OPFS dumps scanned for plaintext (0 matches), CSP + manifest + service worker, fake-microphone voice note, blob-URL revocation, keyboard-only unlock, **real clipboard cleared at 15.1 s**, duress wipe leaving OPFS/IndexedDB/Cache API/localStorage empty, phrase recovery on a fresh profile, InkVault save → lock → open with the preview empty on the first frame after lock, and a `VITE_BASE_PATH` sub-path build with no 404s |
 | GitHub Pages simulation | the workflow's own build steps, served under `/vaulty-skeleton/`: switch page cards, each app's assets and service-worker scope under its sub-path, and per-app storage roots verified in Chrome |
 | RFC conformance | TOTP passes RFC 4226 Appendix D and RFC 6238 Appendix B vectors; SHA-256/512 cross-checked against Node's independent HMAC |
