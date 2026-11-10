@@ -23,23 +23,6 @@ including one that shows how an **existing, ordinary app** adopts encryption wit
 Full detail: [`.kiro/specs/vaulty-core/design.md`](.kiro/specs/vaulty-core/design.md) (byte-level layouts, threat model) and
 [`.kiro/specs/showcase-apps/design.md`](.kiro/specs/showcase-apps/design.md).
 
-### Honest limitations
-
-We would rather you hear these from us:
-
-- **Patterns are low-entropy.** Six ordered nodes ≈ 2²⁷ possibilities. 600k PBKDF2 makes offline guessing expensive, not impossible. The 99-bit recovery phrase is the strong secret.
-- **The namespace salt is a public constant**, so an attacker can precompute folder names for likely patterns once and reuse them across installs. A per-install salt would fix it but needs a non-secret global file and breaks cross-device addressing — deferred.
-- **`kdfIterations` is part of a vault's address.** Changing it means export → import with a new pattern.
-- **Silent re-creation can lose data.** Per the deniability spec, a namespace that fails authentication is replaced with a fresh vault. Export `.vault` backups.
-- **Recovery needs the `.vault` file.** The phrase alone cannot locate a vault whose pattern you forgot.
-- **JS cannot zero strings.** Decrypted seed words, TOTP secrets, Markdown text and file names live in memory while unlocked; `MediaRecorder` chunks are browser-owned. Byte arrays we own are wiped.
-- **InkVault drafts are plaintext until you save.** That is the point of "normal mode first": nothing is persisted at all until you choose *Save to Encrypted Vault* (or *Download .md*), and a reload warns before discarding unsaved text.
-- **Shared origins share fate.** Apps on one origin keep separate vaults, but the duress purge is origin-wide by design (see the demo caveat above).
-- **Whole-file encryption in memory.** `putFile` takes a `Uint8Array`; GhostDrop caps files at 512 MiB. Chunked/streaming AEAD is future core work.
-- **Clipboard:** the 15 s overwrite cannot verify the clipboard still holds our secret; OS clipboard history may keep copies.
-- **A bystander sees decoys.** A mistyped pattern creates an empty vault and shows a recovery phrase once. The runtime-option duress path is faster than a normal unlock (no KDF); the in-vault duress path is not.
-- **Out of scope:** XSS in the host page, malicious extensions, a compromised OS, keyloggers. Real-browser tests run in Chrome only (React 19, React 18 and Next.js 16 builds); Safari and Firefox are untested.
-
 ---
 
 ## Developer integration
@@ -370,3 +353,22 @@ use (the single exception: HMAC *signing* for RFC 6238 TOTP in CryptKeep), web s
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+## Honest limitations
+
+We would rather you hear these from us:
+
+- **Patterns are low-entropy.** Six ordered nodes ≈ 2²⁷ possibilities. 600k PBKDF2 makes offline guessing expensive, not impossible. The 99-bit recovery phrase is the strong secret.
+- **The namespace salt is a public constant**, so an attacker can precompute folder names for likely patterns once and reuse them across installs. A per-install salt would fix it but needs a non-secret global file and breaks cross-device addressing — deferred.
+- **`kdfIterations` is part of a vault's address.** Changing it means export → import with a new pattern.
+- **Silent re-creation can lose data.** Per the deniability spec, a namespace that fails authentication is replaced with a fresh vault. Export `.vault` backups.
+- **Recovery needs the `.vault` file.** The phrase alone cannot locate a vault whose pattern you forgot.
+- **JS cannot zero strings.** Decrypted seed words, TOTP secrets, Markdown text and file names live in memory while unlocked; `MediaRecorder` chunks are browser-owned. Byte arrays we own are wiped.
+- **InkVault drafts are plaintext until you save.** That is the point of "normal mode first": nothing is persisted at all until you choose *Save to Encrypted Vault* (or *Download .md*), and a reload warns before discarding unsaved text.
+- **Shared origins share fate.** Apps on one origin keep separate vaults, but the duress purge is origin-wide by design (see the demo caveat above).
+- **Whole-file encryption in memory.** `putFile` takes a `Uint8Array`; GhostDrop caps files at 512 MiB. Chunked/streaming AEAD is future core work.
+- **Clipboard:** the 15 s overwrite cannot verify the clipboard still holds our secret; OS clipboard history may keep copies.
+- **A bystander sees decoys.** A mistyped pattern creates an empty vault and shows a recovery phrase once. The runtime-option duress path is faster than a normal unlock (no KDF); the in-vault duress path is not.
+- **Out of scope:** XSS in the host page, malicious extensions, a compromised OS, keyloggers. Real-browser tests run in Chrome only (React 19, React 18 and Next.js 16 builds); Safari and Firefox are untested.
