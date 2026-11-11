@@ -111,6 +111,31 @@ const { saveEncrypted, openEncrypted, VaultModal } = useVaultDialog();
 Escape cancels (except on the recovery-phrase step, which needs the explicit confirmation). If the vault locks while the
 modal is open — idle timeout, hidden tab — the pending save is aborted and nothing is stored.
 
+### What you can put in your app
+
+Pick the pieces your app needs. Rows 1–6 come for free with the six lines above; rows 7–14 are one call each on the `vault`
+object that `useVaultDialog()` also returns (or on `useVault()` / `VaultClient` directly).
+
+| # | Element in your UI | How | What your user gets |
+|---|---|---|---|
+| 1 | **Save encrypted** button | `saveEncrypted(name, data, mimeType?)` — `data` is a `string` or `Uint8Array` (e.g. a canvas PNG) | AES-256-GCM ciphertext in OPFS / IndexedDB; nothing in plaintext on disk |
+| 2 | **Open encrypted** button | `openEncrypted(file => …)` — `file.bytes`, `file.text()`, `file.mimeType` | Built-in encrypted file browser; the chosen file is decrypted straight into your app |
+| 3 | **Pattern lock** | `<VaultModal />` (or `<PatternGrid onComplete={vault.unlock} />` for your own screen) | A 5×5 pattern instead of a password; the key is derived from it, never stored |
+| 4 | **Recovery phrase screen** | Automatic on a brand-new vault (`res.recoveryPhrase` with `useVault`) | A one-time 9-word phrase that can restore a backup if the pattern is forgotten |
+| 5 | **Lock button + status** | `lockVault()`, `isUnlocked`, `namespaceId` | Key wiped from memory on demand; a short fingerprint to recognise *their* vault |
+| 6 | **Your look** | `useVaultDialog({ title, theme: { accent, background, text, nodeColor, fontFamily, radius, … } })` | The modal matches your brand — no CSS framework needed |
+| 7 | **List of saved items** | `vault.entries` (live, cleared on lock) · `vault.client.listEntries({ nameContains })` | A gallery / file list whose names are encrypted at rest |
+| 8 | **Delete** | `vault.deleteFile(id)` (also built into the modal browser) | Removes the ciphertext and its index entry |
+| 9 | **Structured data** | `vault.putRecord(obj, { name, tags })` · `vault.getRecord<T>(id)` | Encrypted JSON — settings, layers, history, notes |
+| 10 | **Auto-lock** | `useVaultDialog({ idleTimeoutMs: 60_000, lockOnHidden: true })` · `vault.lastLockReason` (`idle` / `hidden` / `pagehide` / `manual`) | Locks when idle or when the tab is hidden; your UI can say why |
+| 11 | **Every pattern opens a vault** | Built in — `unlock()` never reports "wrong pattern" | Plausible deniability: a different pattern silently opens a different, empty vault (decoys for free) |
+| 12 | **Backup / export** | `vault.exportArchive()` → download as `.vault` (also built into the modal browser) | A portable, still-encrypted backup file |
+| 13 | **Restore / import** | `vault.importArchive(file, patternOrPhrase, { newPattern })` | Restore on another device, with the pattern or the 9-word phrase (and pick a new pattern) |
+| 14 | **Panic pattern** | `vault.client.configureDuress(pattern)` or `useVaultDialog({ duressPattern })` | Drawing it wipes keys and every vault on the origin, then shows a normal lock screen |
+
+Rules of thumb: render `<VaultModal />` once; `fill(0)` the `Uint8Array`s you create from plaintext once they are handed on;
+keep data out of `localStorage`; give each app its own `rootName` when apps share an origin.
+
 ### More control: `useVault()` + `<PatternGrid />`
 
 This is what the three showcase apps use (install as above).
