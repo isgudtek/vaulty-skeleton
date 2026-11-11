@@ -258,6 +258,7 @@ docs/screenshots/       images used above
 | [`.kiro/specs/showcase-apps/`](.kiro/specs/showcase-apps) | EARS requirements → design (SDK reuse matrix) → task list for the three apps, `useVaultDialog` and Pages |
 | [`.kiro/steering/crypto-invariants.md`](.kiro/steering/crypto-invariants.md) | Four non-negotiables: no web storage, fresh IV per encryption, `fill(0)` zeroing, no global metadata |
 | [`.kiro/steering/app-boundaries.md`](.kiro/steering/app-boundaries.md) | Apps hold no security logic; zero what you own; the lock screen never hints at decoys or duress |
+| [`.kiro/skills/vaulty-sdk/SKILL.md`](.kiro/skills/vaulty-sdk/SKILL.md) | Teaches any agent to install the SDK from GitHub and add encrypted Save/Open to an app — recipes, rules and a verify step |
 | [`.kiro/hooks/core-security-check.kiro.hook`](.kiro/hooks/core-security-check.kiro.hook) | On every save under `packages/core/src/**/*.{ts,tsx}`: run the static check and review Web Crypto hygiene |
 
 Steering was not decoration — it caught real issues: the invariants shaped the duress purge (only `.clear()` allowed on web storage),
