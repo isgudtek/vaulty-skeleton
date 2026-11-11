@@ -5,7 +5,7 @@
  * workers do not intercept. The duress wipe deletes this cache too (it re-populates online).
  */
 const CACHE = 'cryptkeep-shell-v1';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './vaulty-skeleton.png'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

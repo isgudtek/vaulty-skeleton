@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/brand/vaulty-ghost.png" alt="Vaulty Skeleton logo: a ghost drawn as a pattern lock" width="160"/></p>
+
 # Vaulty Skeleton
 
 `@vaulty/core` is a zero-knowledge, zero-dependency vault SDK that runs entirely in your browser: draw a 5×5 pattern, get an

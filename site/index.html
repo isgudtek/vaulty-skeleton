@@ -8,7 +8,7 @@
     <meta name="color-scheme" content="dark light" />
     <meta name="description" content="Live demos of @vaulty/core — a zero-dependency, zero-knowledge vault SDK — powering three very different browser apps." />
     <title>Vaulty Skeleton — Live Zero-Knowledge Showcase</title>
-    <link rel="icon" type="image/png" sizes="192x192" href="./inkvault/icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="256x256" href="./vaulty-skeleton.png" />
     <style>
       :root {
         --bg: #0b0f19;
@@ -33,7 +33,11 @@
         font: 16px/1.6 var(--sans);
       }
       a { color: inherit; }
-      .wrap { max-width: 1120px; margin: 0 auto; padding: 56px 20px 40px; }
+      .wrap { max-width: 1120px; margin: 0 auto; padding: 40px 20px 40px; }
+      .brand { display: inline-flex; align-items: center; gap: 12px; margin-bottom: 22px; text-decoration: none; font: 700 15px/1 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: #c4b5fd; }
+      .brand img { width: 64px; height: 64px; filter: drop-shadow(0 0 18px rgb(124 58 237 / 0.45)); }
+      .brand:hover span, .brand:focus-visible span { color: #ede9fe; }
+      .brand:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; border-radius: 8px; }
       .eyebrow { font: 600 12px/1 var(--mono); letter-spacing: 0.3em; text-transform: uppercase; color: var(--muted); }
       h1 { font-size: clamp(2rem, 5vw, 3.4rem); line-height: 1.08; letter-spacing: -0.02em; margin: 14px 0 16px; }
       h1 span { background: linear-gradient(90deg, #34d399, #a5b4fc 55%, #fbbf24); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -82,6 +86,10 @@
   </head>
   <body>
     <main class="wrap">
+      <a class="brand" href="https://github.com/isgudtek/vaulty-skeleton">
+        <img src="./vaulty-skeleton.png" alt="" width="64" height="64" />
+        <span>Vaulty Skeleton</span>
+      </a>
       <p class="eyebrow">Kiroween · Skeleton Crew</p>
       <h1>One zero-knowledge skeleton.<br /><span>Three completely different apps.</span></h1>
       <p class="lede">

@@ -4,6 +4,7 @@ import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, use
 import { Preview } from './components/Preview';
 import { Toolbar } from './components/Toolbar';
 import { ConfirmModal } from './components/ui';
+import { MadeWith } from './components/MadeWith';
 import { RecoveryBanner, UnlockModal, VaultBrowser } from './components/vault';
 import { getAdapter } from './lib/adapter';
 import {
@@ -329,6 +330,7 @@ export function App({ vaultOptions }: AppProps) {
           {status?.text ?? ''}
         </span>
         <span className="font-mono">PBKDF2 ×600,000 · AES-256-GCM</span>
+        <MadeWith />
       </footer>
 
       {modal?.kind === 'unlock' ? (

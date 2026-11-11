@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getAdapter } from './lib/adapter';
 import { RecoveryModal } from './components/identity';
 import { LockScreen } from './components/LockScreen';
+import { MadeWith } from './components/MadeWith';
 import { RestoreModal } from './components/settings';
 import { VaultScreen } from './components/VaultScreen';
 
@@ -90,6 +91,7 @@ export function App({ vaultOptions }: AppProps) {
       {restoreOpen ? (
         <RestoreModal vault={vault} replacing={isUnlocked} onClose={() => setRestoreOpen(false)} />
       ) : null}
+      <MadeWith />
     </main>
   );
 }

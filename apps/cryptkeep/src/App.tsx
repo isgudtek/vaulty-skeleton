@@ -5,6 +5,7 @@ import { getAdapter } from './lib/adapter';
 import { RestoreModal } from './components/Backup';
 import { RecoveryModal } from './components/identity';
 import { LockScreen } from './components/LockScreen';
+import { MadeWith } from './components/MadeWith';
 import { VaultScreen } from './components/VaultScreen';
 import { CLIPBOARD_CLEAR_MS, ClipboardGuard, type ClipboardLike } from './lib/clipboard';
 import { useRecords } from './lib/hooks';
@@ -106,6 +107,7 @@ export function App({ vaultOptions, clipboard, clipboardClearMs = CLIPBOARD_CLEA
       {restore ? (
         <RestoreModal vault={vault} initialMethod={restore} replacing={isUnlocked} onClose={() => setRestore(null)} />
       ) : null}
+      <MadeWith />
     </main>
   );
 }

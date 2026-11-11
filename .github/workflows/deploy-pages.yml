@@ -48,6 +48,7 @@ jobs:
           cp -R apps/cryptkeep/dist _site/cryptkeep
           cp -R apps/inkvault/dist _site/inkvault
           cp site/index.html _site/index.html
+          cp site/vaulty-skeleton.png _site/vaulty-skeleton.png
           touch _site/.nojekyll
           # Fail the build if any app was built without the Pages base path.
           for app in ghostdrop cryptkeep inkvault; do
