@@ -1,13 +1,8 @@
 # Vaulty Skeleton
 
-`@vaulty/core` is a zero-dependency vault SDK that runs entirely in your browser: draw a 5×5 pattern, get an
+`@vaulty/core` is a zero-knowledge, zero-dependency vault SDK that runs entirely in your browser: draw a 5×5 pattern, get an
 AES-256-GCM encrypted vault with plausible deniability, a duress wipe and portable `.vault` backups.
 Nothing is ever sent to a server — these demos are static files.
-
-`@vaulty/core` is a zero-dependency, client-side vault SDK: draw a 5×5 pattern, get an encrypted vault with
-**plausible deniability**, a **forensic-safe duress wipe**, OPFS/IndexedDB storage and **portable encrypted `.vault` archives**.
-This repo proves it is a real skeleton by building three apps on it that share *no security code* and almost nothing visually —
-including one that shows how an **existing, ordinary app** adopts encryption without changing how people use it.
 
 ## Security architecture (summary)
 
