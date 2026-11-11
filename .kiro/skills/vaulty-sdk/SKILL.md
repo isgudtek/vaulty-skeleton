@@ -45,35 +45,159 @@ API: `saveEncrypted(name, data: string | Uint8Array, mimeType?)` → entry or `n
 `openEncrypted(cb)` → `cb({ id, name, mimeType, size, bytes, text() })` · `lockVault()` · `isUnlocked` · `namespaceId` ·
 `vault` (the full `useVault()` result).
 
-## 3. Recipes
+## 3. Building blocks (pick what the app needs)
 
-**Binary (canvas → PNG):**
+All blocks assume `const { saveEncrypted, openEncrypted, lockVault, isUnlocked, namespaceId, VaultModal, vault } = useVaultDialog(opts);`
+inside a component. Blocks 1–6 are the minimal integration; 7–14 are optional add-ons. When the user asks for "encrypted
+save", start with 1, 2, 5 and the modal, then offer the rest.
 
+| # | Block | Core call |
+|---|---|---|
+| 1 | Save encrypted | `saveEncrypted(name, data, mimeType?)` |
+| 2 | Open encrypted | `openEncrypted(cb)` |
+| 3 | Pattern lock | `<VaultModal />` or `<PatternGrid />` |
+| 4 | Recovery phrase | automatic (modal) / `res.recoveryPhrase` |
+| 5 | Lock + status | `lockVault()`, `isUnlocked`, `namespaceId` |
+| 6 | Theme | `useVaultDialog({ title, theme })` |
+| 7 | Gallery / list | `vault.entries` |
+| 8 | Delete | `vault.deleteFile(id)` |
+| 9 | Structured data | `vault.putRecord` / `vault.getRecord<T>` |
+| 10 | Auto-lock | `idleTimeoutMs`, `lockOnHidden`, `vault.lastLockReason` |
+| 11 | Ghost vaults | built in (no code) |
+| 12 | Export backup | `vault.exportArchive()` |
+| 13 | Import backup | `vault.importArchive(file, patternOrPhrase, { newPattern })` |
+| 14 | Panic / duress | `vault.client.configureDuress(pattern)` — only on explicit request |
+
+### 1 · Save encrypted
 ```tsx
-const save = () => canvas.toBlob(async (blob) => {
+// text / JSON — strings are encoded and wiped by the SDK
+<button onClick={() => saveEncrypted('note.md', text)}>Save encrypted</button>
+<button onClick={() => saveEncrypted('state.json', JSON.stringify(state), 'application/json')}>Save state</button>
+
+// binary (canvas → PNG, File, audio …) — wipe the bytes you created
+const saveCanvas = () => canvas.toBlob(async (blob) => {
   const bytes = new Uint8Array(await blob!.arrayBuffer());
   try { await saveEncrypted('sketch.png', bytes, 'image/png'); } finally { bytes.fill(0); }
 }, 'image/png');
+```
+Resolves the stored `VaultMetadataEntry` (`{ id, name, mimeType, size, createdAt, updatedAt, tags }`) or `null` if cancelled.
 
-const open = () => openEncrypted(async (f) => {
-  const img = await createImageBitmap(new Blob([f.bytes as BlobPart], { type: f.mimeType }));
-  f.bytes.fill(0);
-  ctx.drawImage(img, 0, 0);
+### 2 · Open encrypted
+```tsx
+openEncrypted((f) => setText(f.text()));                       // text
+openEncrypted((f) => setState(JSON.parse(f.text())));           // JSON
+openEncrypted(async (f) => {                                    // image back onto a canvas
+  try {
+    const img = await createImageBitmap(new Blob([f.bytes as BlobPart], { type: f.mimeType }));
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0);
+  } finally { f.bytes.fill(0); }
+});
+```
+Resolves `true` if a file was opened, `false` if the browser was closed.
+
+### 3 · Pattern lock
+Default: render `<VaultModal />` once — it asks for the 5×5 pattern whenever a save/open needs it.
+Own lock screen instead (use `useVault()` from `@vaulty/core/react`):
+```tsx
+<PatternGrid size={300} nodeColor="#52525B" activeColor="#F59E0B" lineColor="#F59E0B"
+  onComplete={async (p) => { const res = await vault.unlock(p); /* see 4 */ }} />
+```
+Patterns need ≥ 6 distinct nodes (`minNodes`); `onError('too_short')` fires otherwise. Never log or store the pattern.
+
+### 4 · Recovery phrase
+The modal shows the 9-word phrase automatically for a brand-new vault and requires "I have written this down".
+With your own screen: `if (res.status === 'unlocked' && res.created) showOnce(res.recoveryPhrase)` — keep it only in
+component state, clear it when dismissed.
+
+### 5 · Lock button + status
+```tsx
+<button onClick={lockVault} disabled={!isUnlocked}>Lock</button>
+<span>{isUnlocked ? `Unlocked · ${namespaceId?.slice(0, 8)}` : 'Locked'}</span>
+```
+Locking wipes the key from memory. Drop any decrypted UI state (text, images) when `isUnlocked` becomes false.
+
+### 6 · Theme / branding
+```tsx
+useVaultDialog({
+  title: 'The Crypt',
+  theme: { accent: '#ff7518', accentText: '#ffffff', background: '#1a1022', text: '#f5f5f5', mutedText: '#c4b5fd',
+           border: '#3b1f4a', danger: '#b3001b', nodeColor: '#7c3aed', overlay: 'rgba(0,0,0,.7)',
+           fontFamily: 'system-ui, sans-serif', radius: 12 },
 });
 ```
 
-**JSON:** `saveEncrypted('state.json', JSON.stringify(state))` and `openEncrypted(f => setState(JSON.parse(f.text())))`,
-or typed records via `vault.putRecord(obj, { name, tags })` / `vault.getRecord<T>(id)`.
+### 7 · Gallery / list of saved items
+```tsx
+<ul>{vault.entries.map((e) => <li key={e.id}>{e.name} · {(e.size / 1024).toFixed(1)} kB</li>)}</ul>
+```
+`vault.entries` is live and empty while locked (names are encrypted at rest). Filter: `vault.refresh({ nameContains: 'sketch' })`.
+To open a specific entry directly: `const { entry, data } = await vault.getFile(id)` (then `data.fill(0)` when done).
 
-**Options:** `useVaultDialog({ title, theme: { accent, background, text, mutedText, border, nodeColor, fontFamily, radius },
-idleTimeoutMs, lockOnHidden, adapter, duressPattern })`.
+### 8 · Delete
+```tsx
+<button onClick={() => vault.deleteFile(e.id)}>Delete</button>   // resolves true if it existed
+```
+The modal's file browser already has a two-step delete.
 
-**More (on `vault`):** `entries` (live list, cleared on lock), `deleteFile(id)`, `exportArchive()` → `.vault` bytes,
-`importArchive(file, patternOrPhrase, { newPattern })`, `lastLockReason`, `client.configureDuress(pattern)` (wipes the
-whole origin — only add when explicitly requested).
+### 9 · Structured data (typed JSON records)
+```tsx
+const rec = await vault.putRecord({ strokes, palette }, { name: 'drawing-1', tags: ['drawing'] });
+const back = await vault.getRecord<{ strokes: Stroke[]; palette: string[] }>(rec.id);   // back.data
+```
+Requires an unlocked vault (e.g. after the first save/open, or your own `PatternGrid`).
 
-**Custom lock screen:** `useVault()` + `<PatternGrid onComplete={(p) => vault.unlock(p)} />`.
-**No React:** `new VaultClient({ adapter: await createBestStorageAdapter({ rootName: 'my-app' }) })` from `@vaulty/core`.
+### 10 · Auto-lock
+```tsx
+useVaultDialog({ idleTimeoutMs: 60_000, lockOnHidden: true });
+// vault.lastLockReason: 'manual' | 'idle' | 'hidden' | 'pagehide' | null
+{vault.lastLockReason === 'idle' && <p>Locked after inactivity.</p>}
+```
+Call `vault.touch()` on app activity that should count as "not idle" if the modal is not involved.
+
+### 11 · Ghost vaults (plausible deniability)
+No code. Every pattern opens its own vault; an unknown pattern silently creates an empty one. Never add a
+"wrong pattern" message. Recommended copy: "Empty vault? Draw your pattern again — every pattern opens its own vault."
+
+### 12 · Export backup (.vault)
+```tsx
+const exportBackup = async () => {
+  const bytes = await vault.exportArchive();          // still fully encrypted
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes as BlobPart]));
+  a.download = 'backup.vault';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 0);
+};
+```
+The modal's file browser also has an "Export .vault" button.
+
+### 13 · Import / restore
+```tsx
+<input type="file" accept=".vault" onChange={async (ev) => {
+  const file = ev.target.files?.[0]; if (!file) return;
+  const res = await vault.importArchive(file, patternOrNineWords, { newPattern });   // newPattern optional
+  // res = { status: 'imported', namespaceId, entryCount }; the vault is now unlocked
+}} />
+```
+`patternOrNineWords` is the original pattern (`number[]`) or the 9-word phrase (string). Pass `newPattern` when restoring
+with the phrase because the pattern was forgotten. Collect the pattern with a `<PatternGrid />`.
+
+### 14 · Panic / duress pattern (only when explicitly requested)
+```tsx
+await vault.client.configureDuress(panicPattern);    // stored encrypted, looks like any other vault
+// or at runtime: useVaultDialog({ duressPattern: panicPattern })
+```
+Drawing it wipes the key and **every vault and web storage on the origin**, then shows a normal lock screen
+(`unlock()` returns `{ status: 'duress_triggered' }`). Warn the user; never use it on a shared demo origin.
+
+### No React
+```ts
+import { VaultClient, createBestStorageAdapter } from '@vaulty/core';
+const vault = new VaultClient({ adapter: () => createBestStorageAdapter({ rootName: 'my-app', dbName: 'my-app-vault' }) });
+await vault.unlock([0, 1, 2, 3, 4, 9]);   // then putFile / getFile / putRecord / listEntries / exportArchive …
+vault.lock();
+```
 
 ## 4. Rules
 
