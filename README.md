@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/brand/vaulty-ghost.png" alt="Vaulty Skeleton logo: a ghost drawn as a pattern lock" width="160"/></p>
+<p align="center"><img src="docs/brand/vaulty-ghost.png" alt="Vaulty Skeleton logo: a skull drawn as a pattern lock" width="160"/></p>
 
 # Vaulty Skeleton
 
